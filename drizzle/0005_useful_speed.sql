@@ -1,0 +1,1 @@
+ALTER TABLE "chats" ADD CONSTRAINT "chats_file_key_unique" UNIQUE("file_key");

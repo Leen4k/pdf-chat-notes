@@ -1,0 +1,10 @@
+// enable read write for supabase bucket
+go into sql editor then run this sql query:
+
+create policy "Avatar images are publicly accessible."
+  on storage.objects for select
+  using ( bucket_id = '<bucket name>' );
+
+create policy "Anyone can upload an avatar."
+  on storage.objects for insert
+  with check ( bucket_id = '<bucket name>' );
