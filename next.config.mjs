@@ -5,7 +5,6 @@ const nextConfig = {
 
     return config;
   },
-  ignoreBuildErrors: true,
   typescript: {
     ignoreBuildErrors: true,
   },

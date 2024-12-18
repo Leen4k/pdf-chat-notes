@@ -12,6 +12,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { auth } from "@clerk/nextjs/server";
 import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai";
+import { revalidatePath } from "next/cache";
 
 async function loadPDF(url: string | URL | Request) {
   //load the pdf file and get only the page content and put into one variable only
@@ -25,44 +26,6 @@ async function loadPDF(url: string | URL | Request) {
   });
   return pdfTextContent;
 }
-
-// export async function POST(req: Request, res: Response) {
-//   try {
-//     const { file_key, file_name, file_url } = await req.json();
-//     const { userId } = auth();
-
-//     if (!userId) {
-//       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-//     }
-
-//     const docs = await loadPDF(file_url);
-//     const splitter = new RecursiveCharacterTextSplitter({
-//       chunkSize: 1000,
-//       chunkOverlap: 20,
-//     });
-//     const output = await splitter.createDocuments([docs]);
-
-//     let splitterList: string[] = output.map((doc) => doc.pageContent);
-//     const size = docs.length;
-
-//     const result = await processAndStoreEmbeddings(
-//       splitterList,
-//       file_name,
-//       file_url,
-//       userId,
-//       file_key,
-//       size
-//     );
-
-//     return NextResponse.json({
-//       message: "Embeddings processed successfully!",
-//       data: result,
-//     });
-//   } catch (err) {
-//     console.log(err);
-//     return NextResponse.json({ error: "internal server error", status: 500 });
-//   }
-// }
 
 export async function POST(req: Request, res: Response) {
   try {
@@ -155,7 +118,7 @@ export async function POST(req: Request, res: Response) {
     });
 
     const storedIds = await Promise.all(embeddingPromises);
-
+    revalidatePath("/");
     return NextResponse.json({
       message: "Embeddings processed successfully!",
       data: {
@@ -174,53 +137,81 @@ export async function POST(req: Request, res: Response) {
   }
 }
 
+// export async function GET(req: Request) {
+//   try {
+//     const { userId } = auth();
+//     if (!userId) {
+//       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+//     }
+
+//     const { searchParams } = new URL(req.url);
+//     const chatId = searchParams.get("chatId");
+//     const searchQuery = searchParams.get("search");
+
+//     if (!chatId) {
+//       return NextResponse.json(
+//         { error: "Chat ID is required" },
+//         { status: 400 }
+//       );
+//     }
+
+//     // Query to fetch file with associated chat info
+//     const pdf = await db
+//       .select({
+//         id: chats.id,
+//         pdfName: files.name,
+//         pdfUrl: files.url,
+//         createdAt: chats.createdAt,
+//         fileKey: files.fileKey,
+//         isSelected: files.isSelected,
+//       })
+//       .from(chats)
+//       .leftJoin(files, eq(chats.id, files.chatId))
+//       .where(eq(chats.id, parseInt(chatId)));
+
+//     if (!pdf.length) {
+//       return NextResponse.json({ error: "PDF not found" }, { status: 404 });
+//     }
+
+//     let similarChunks = null;
+//     if (searchQuery) {
+//       similarChunks = await findSimilarChunks(searchQuery, parseInt(chatId));
+//     }
+
+//     return NextResponse.json({
+//       pdf: pdf,
+//       similarChunks,
+//     });
+//   } catch (err) {
+//     console.error(err);
+//     return NextResponse.json(
+//       { error: "Internal server error" },
+//       { status: 500 }
+//     );
+//   }
+// }
+
 export async function GET(req: Request) {
+  const { userId } = auth();
+
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
-    const { userId } = auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { searchParams } = new URL(req.url);
-    const chatId = searchParams.get("chatId");
-    const searchQuery = searchParams.get("search");
-
-    if (!chatId) {
-      return NextResponse.json(
-        { error: "Chat ID is required" },
-        { status: 400 }
-      );
-    }
-
-    // Query to fetch file with associated chat info
-    const pdf = await db
+    const userChats = await db
       .select({
         id: chats.id,
-        pdfName: files.name,
-        pdfUrl: files.url,
-        createdAt: chats.createdAt,
-        fileKey: files.fileKey,
-        isSelected: files.isSelected,
+        name: chats.name,
       })
       .from(chats)
-      .leftJoin(files, eq(chats.id, files.chatId))
-      .where(eq(chats.id, parseInt(chatId)));
-
-    if (!pdf.length) {
-      return NextResponse.json({ error: "PDF not found" }, { status: 404 });
-    }
-
-    let similarChunks = null;
-    if (searchQuery) {
-      similarChunks = await findSimilarChunks(searchQuery, parseInt(chatId));
-    }
+      .where(eq(chats.userId, userId));
 
     return NextResponse.json({
-      pdf: pdf,
-      similarChunks,
+      status: 200,
+      data: userChats,
     });
-  } catch (err) {
-    console.error(err);
+  } catch (error) {
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

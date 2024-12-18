@@ -38,6 +38,10 @@ const FileUpload = () => {
       queryClient.invalidateQueries({
         queryKey: ["documentChats", chatId], // Update the query key to include chatId
       });
+      queryClient.invalidateQueries({
+        queryKey: ["userChats"],
+        exact: false,
+      });
       toast.success("embedded data successfully", { id: "embedding" });
     },
   });
@@ -71,6 +75,12 @@ const FileUpload = () => {
               if (chatId) {
                 router.push(`/chats/${chatId}`);
               }
+            },
+            onSettled: (data) => {
+              queryClient.invalidateQueries({
+                queryKey: ["documentChats", chatId],
+                exact: false,
+              });
             },
             onError: (err) => toast.error(err.message),
           }

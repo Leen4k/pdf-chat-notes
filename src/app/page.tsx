@@ -1,31 +1,35 @@
+"use client";
 import { Button } from "@/components/ui/button";
-import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
-import { auth } from "@clerk/nextjs/server";
+import {
+  SignedIn,
+  SignedOut,
+  SignInButton,
+  useAuth,
+  UserButton,
+} from "@clerk/nextjs";
 import FileUpload from "@/components/ui/FileUpload";
 import { db } from "@/lib/db";
 import { chats, files } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import Link from "next/link";
 import { TbSparkles } from "react-icons/tb";
+import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
 
-async function getChats(userId: string) {
-  const userPdfs = await db
-    .select({
-      id: chats.id,
-      name: chats.name,
-    })
-    .from(chats);
-  return userPdfs;
-}
-
-const Page = async () => {
-  const { userId } = auth();
+const Page = () => {
+  const { userId } = useAuth();
   const isAuth = !!userId;
 
-  let userChats: any = [];
-  if (userId) {
-    userChats = await getChats(userId);
-  }
+  const { data: userChats = [], refetch } = useQuery({
+    queryKey: ["userChats", userId],
+    queryFn: async () => {
+      if (!userId) return [];
+      const { data: response } = await axios.get(`/api/chat`);
+      console.log(response.data);
+      return response.data;
+    },
+    enabled: !!userId,
+  });
 
   return (
     <div className="w-screen min-h-screen text-center flex items-center justify-center">
