@@ -19,12 +19,13 @@ import {
 } from "@/components/ui/tooltip";
 import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Error from "next/error";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { useParams } from "next/navigation";
+import debounce from "lodash/debounce";
 
 interface TextEditorProps {
   editorContent: string;
@@ -33,10 +34,43 @@ interface TextEditorProps {
 
 const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
   const { chatId } = useParams();
+  const queryClient = useQueryClient();
+
   const preprocessContent = (content: string) => {
     // Replace Markdown bold formatting with Tiptap bold markup
     return content.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
   };
+
+  const { data: savedContent } = useQuery({
+    queryKey: ["editorContent", chatId],
+    queryFn: async () => {
+      const response = await axios.get(`/api/editor?chatId=${chatId}`);
+      return response.data.data?.content || "";
+    },
+    staleTime: 0,
+    cacheTime: 0,
+    refetchOnWindowFocus: true,
+  });
+
+  const { mutate: saveContent } = useMutation({
+    mutationFn: async (content: string) => {
+      const response = await axios.post("/api/editor", {
+        content,
+        chatId,
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["editorContent", chatId],
+      });
+    }
+  });
+
+  const debouncedSave = debounce((content: string) => {
+    saveContent(content);
+  }, 1000);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -70,50 +104,23 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
     editorProps: {
       attributes: {
         class:
-          "prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none min-h-screen p-4",
+          "prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none min-h-screen p-4 cursor-text",
       },
       handleClick: (view, pos, event) => {
-        // Enable single-click text selection
-        const { state } = view;
-        const { selection } = state;
-        const { empty } = selection;
-
-        if (empty) {
-          try {
-            const resolvedPos = view.state.doc.resolve(pos);
-            const node = resolvedPos.parent;
-            const start = resolvedPos.start();
-            const end = resolvedPos.end();
-
-            if (start < end) {
-              const textSelection = view.state.tr.setSelection(
-                TextSelection.create(view.state.doc, start, end)
-              );
-              view.dispatch(textSelection);
-
-              // Show tooltip with AI suggestion when text is selected
-              const selectedText = view.state.doc.textBetween(start, end);
-              if (selectedText) {
-                // Position tooltip near selection
-                const coords = view.coordsAtPos(start);
-                const tooltip = document.createElement("div");
-                tooltip.style.position = "absolute";
-                tooltip.style.left = `${coords.left}px`;
-                tooltip.style.top = `${coords.top}px`;
-                document.body.appendChild(tooltip);
-              }
-            }
-          } catch (error) {
-            console.error("Error selecting text:", error);
-          }
-        }
+        // Set cursor position on click
+        const { state, dispatch } = view;
+        const tr = state.tr;
+        tr.setSelection(TextSelection.create(state.doc, pos));
+        dispatch(tr);
         return true;
       },
     },
-    content: editorContent,
     onUpdate: ({ editor }) => {
-      onChange(editor.getHTML());
+      const content = editor.getHTML();
+      onChange(content);
+      debouncedSave(content);
     },
+    content: savedContent || preprocessContent(editorContent),
   });
 
   const { mutate: getAISuggestion } = useMutation({
@@ -138,26 +145,35 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
       });
 
       // Insert AI response after selected text
-      const { from, to } = editor?.state.selection;
+      const selection = editor?.state.selection;
+      const from = selection?.from;
+      const to = selection?.to;
+
       if (editor && from !== undefined && to !== undefined) {
+        const text = data.data;
+        const parts = text.split(/(\*\*.*?\*\*)/g);
+
+        const content = parts.map((part) => {
+          if (part.startsWith("**") && part.endsWith("**")) {
+            return {
+              type: "text",
+              marks: [{ type: "bold" }],
+              text: part.slice(2, -2),
+            };
+          }
+          return {
+            type: "text",
+            text: part,
+          };
+        });
+
         editor
           .chain()
           .focus()
           .insertContentAt(to, [
             {
               type: "paragraph",
-              content: [
-                {
-                  type: "text",
-                  marks: [
-                    {
-                      type: "textStyle",
-                      //   attrs: { color: "#6366f1" },
-                    },
-                  ],
-                  text: `\n\nAI Response: ${data.data}`,
-                },
-              ],
+              content,
             },
           ])
           .run();

@@ -34,6 +34,7 @@ import FileUpload from "./ui/FileUpload";
 import { softDeleteFile } from "@/actions/deleteFile";
 import { TbRestore } from "react-icons/tb";
 import toast from "react-hot-toast";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Type definition remains the same
 type DocumentChat = {
@@ -49,6 +50,16 @@ type TrashItem = {
   id: string;
   fileName: string;
   fileId: string;
+};
+
+type DialogConfig = {
+  isOpen: boolean;
+  type: 'softDelete' | 'restore' | 'hardDelete' | null;
+  fileId: string | null;
+  title: string;
+  description: string;
+  actionLabel: string;
+  actionButtonClass?: string;
 };
 
 // Fetch document chats
@@ -80,10 +91,40 @@ const deleteFile = async (fileId: string) => {
   return data;
 };
 
+const ChatSkeleton = () => (
+  <SidebarMenuItem>
+    <div className="flex items-center w-full space-x-4 p-2">
+      <Skeleton className="h-4 w-4" />
+      <Skeleton className="h-4 flex-grow" />
+      <Skeleton className="h-4 w-4" />
+      <Skeleton className="h-8 w-8" />
+    </div>
+  </SidebarMenuItem>
+);
+
+const TrashSkeleton = () => (
+  <SidebarMenuItem>
+    <div className="flex items-center w-full space-x-4 p-2">
+      <Skeleton className="h-4 w-4" />
+      <Skeleton className="h-4 flex-grow" />
+      <Skeleton className="h-8 w-8" />
+      <Skeleton className="h-8 w-8" />
+    </div>
+  </SidebarMenuItem>
+);
+
 export function AppSidebar() {
   const { chatId } = useParams();
   const queryClient = useQueryClient();
-  const [fileToDelete, setFileToDelete] = useState<string | null>(null);
+  const [dialogConfig, setDialogConfig] = useState<DialogConfig>({
+    isOpen: false,
+    type: null,
+    fileId: null,
+    title: '',
+    description: '',
+    actionLabel: '',
+    actionButtonClass: ''
+  });
 
   // Soft delete mutation
   const softDeleteMutation = useMutation({
@@ -149,7 +190,7 @@ export function AppSidebar() {
       });
 
       toast.success(data.message, { id: "soft-delete" });
-      setFileToDelete(null);
+      closeDialog();
     },
     onSettled: () => {
       queryClient.invalidateQueries({
@@ -190,6 +231,7 @@ export function AppSidebar() {
     },
     onSuccess: (data) => {
       toast.success(data.message, { id: "restore-file" });
+      closeDialog();
 
       // Invalidate both documentChats and trashItems queries to ensure fresh data
       queryClient.invalidateQueries({
@@ -207,13 +249,13 @@ export function AppSidebar() {
   });
 
   // Fetch document chats
-  const { data: documentChats, isLoading } = useQuery({
+  const { data: documentChats, isLoading: isChatsLoading } = useQuery({
     queryKey: ["documentChats", chatId],
     queryFn: () => fetchDocumentChats(chatId as string),
   });
 
   //Fetch trash items
-  const { data: trashItems } = useQuery({
+  const { data: trashItems, isLoading: isTrashLoading } = useQuery({
     queryKey: ["trashItems", chatId],
     queryFn: async () => {
       const { data } = await axios.get(`/api/file/trash?chatId=${chatId}`);
@@ -250,9 +292,37 @@ export function AppSidebar() {
     },
   });
 
-  // Handle soft delete
-  const handleSoftDeleteFile = (fileId: number) => {
-    softDeleteMutation.mutate(fileId);
+  const openDialog = (config: Omit<DialogConfig, 'isOpen'>) => {
+    setDialogConfig({
+      ...config,
+      isOpen: true
+    });
+  };
+
+  const closeDialog = () => {
+    setDialogConfig(prev => ({
+      ...prev,
+      isOpen: false,
+      fileId: null,
+      type: null
+    }));
+  };
+
+  // Handle dialog action
+  const handleDialogAction = () => {
+    if (!dialogConfig.fileId) return;
+
+    switch (dialogConfig.type) {
+      case 'softDelete':
+        softDeleteMutation.mutate(parseInt(dialogConfig.fileId));
+        break;
+      case 'restore':
+        restoreFileMutation.mutate(dialogConfig.fileId);
+        break;
+      case 'hardDelete':
+        deleteFileMutation.mutate(dialogConfig.fileId);
+        break;
+    }
   };
 
   // Handle file selection toggle
@@ -299,8 +369,7 @@ export function AppSidebar() {
         queryKey: ["trashItems", chatId],
         exact: false,
       });
-      // Reset the fileToDelete state
-      setFileToDelete(null);
+      closeDialog();
     },
   });
 
@@ -318,10 +387,12 @@ export function AppSidebar() {
                 <FileUpload />
 
                 {/* Document chat items */}
-                {isLoading ? (
-                  <SidebarMenuItem>
-                    <span>Loading chats...</span>
-                  </SidebarMenuItem>
+                {isChatsLoading ? (
+                  <>
+                    <ChatSkeleton />
+                    <ChatSkeleton />
+                    <ChatSkeleton />
+                  </>
                 ) : (
                   <>
                     {documentChats?.map((chat: DocumentChat) => (
@@ -348,7 +419,14 @@ export function AppSidebar() {
                               className="ml-2"
                               onClick={(e) => {
                                 e.preventDefault();
-                                setFileToDelete(chat.id);
+                                openDialog({
+                                  type: 'softDelete',
+                                  fileId: chat.id,
+                                  title: 'Move to Trash?',
+                                  description: 'This will move the file to trash',
+                                  actionLabel: 'Move to Trash',
+                                  actionButtonClass: 'bg-red-500 hover:bg-red-600'
+                                });
                               }}
                             >
                               <Trash2 className="h-4 w-4 text-red-500" />
@@ -369,63 +447,82 @@ export function AppSidebar() {
 
             <SidebarGroupContent>
               <SidebarMenu>
-                {trashItems?.map((item: TrashItem) => (
-                  <SidebarMenuItem key={item.id}>
-                    <SidebarMenuButton asChild>
-                      <div className="flex">
-                        <GrDocumentPdf />
-                        <span className="flex-1">{item.fileName} </span>
-                        <Button
-                          variant="ghost"
-                          onClick={() =>
-                            restoreFileMutation.mutate(item.fileId)
-                          }
-                        >
-                          {" "}
-                          <TbRestore />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="ml-2"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            deleteFileMutation.mutate(item.fileId);
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
-                      </div>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
+                {isTrashLoading ? (
+                  <>
+                    <TrashSkeleton />
+                    <TrashSkeleton />
+                  </>
+                ) : (
+                  trashItems?.map((item: TrashItem) => (
+                    <SidebarMenuItem key={item.id}>
+                      <SidebarMenuButton asChild>
+                        <div className="flex">
+                          <GrDocumentPdf />
+                          <span className="flex-1">{item.fileName} </span>
+                          <Button
+                            variant="ghost"
+                            onClick={() => 
+                              openDialog({
+                                type: 'restore',
+                                fileId: item.fileId,
+                                title: 'Restore File?',
+                                description: 'This will restore the file from trash',
+                                actionLabel: 'Restore',
+                                actionButtonClass: 'bg-green-500 hover:bg-green-600'
+                              })
+                            }
+                          >
+                            {" "}
+                            <TbRestore />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="ml-2"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              openDialog({
+                                type: 'hardDelete',
+                                fileId: item.fileId,
+                                title: 'Delete Permanently?',
+                                description: 'This action cannot be undone',
+                                actionLabel: 'Delete Forever',
+                                actionButtonClass: 'bg-red-500 hover:bg-red-600'
+                              });
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        </div>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))
+                )}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>
       </Sidebar>
 
-      {/* Delete Confirmation Dialog */}
+      {/* Reusable Confirmation Dialog */}
       <AlertDialog
-        open={fileToDelete !== null}
-        onOpenChange={() => setFileToDelete(null)}
+        open={dialogConfig.isOpen}
+        onOpenChange={closeDialog}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogTitle>{dialogConfig.title}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will move the file to trash
+              {dialogConfig.description}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() =>
-                fileToDelete && handleSoftDeleteFile(parseInt(fileToDelete))
-              }
-              className="bg-red-500 hover:bg-red-600"
+              onClick={handleDialogAction}
+              className={dialogConfig.actionButtonClass}
             >
-              Delete
+              {dialogConfig.actionLabel}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

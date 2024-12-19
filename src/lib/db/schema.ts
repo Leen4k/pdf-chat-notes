@@ -70,3 +70,14 @@ export const trashItems = pgTable("trash_items", {
   restoreExpiresAt: timestamp("restore_expires_at").notNull(),
   isRestored: boolean("is_restored").default(false).notNull(),
 });
+
+// Add this new table for editor content
+export const editorContent = pgTable("editor_content", {
+  id: serial("id").primaryKey(),
+  chatId: integer("chat_id")
+    .references(() => chats.id)
+    .notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
