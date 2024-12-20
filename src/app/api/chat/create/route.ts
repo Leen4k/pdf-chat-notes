@@ -10,12 +10,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { name } = await req.json();
+    const { name, gradientId } = await req.json();
 
     const [newChat] = await db
       .insert(chats)
       .values({
         name,
+        gradientId,
         userId,
         createdAt: new Date(),
         updatedAt: new Date(),

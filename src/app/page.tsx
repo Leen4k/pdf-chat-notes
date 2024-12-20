@@ -78,6 +78,7 @@ export default function Home() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [chatToDelete, setChatToDelete] = useState<Chat | null>(null);
+  const [newChatGradientId, setNewChatGradientId] = useState<number | undefined>();
   const queryClient = useQueryClient();
 
   const { data: chats, isLoading } = useQuery({
@@ -90,13 +91,14 @@ export default function Home() {
   });
 
   const createChatMutation = useMutation({
-    mutationFn: async (name: string) => {
-      const response = await axios.post("/api/chat/create", { name });
+    mutationFn: async ({ name, gradientId }: { name: string; gradientId?: number }) => {
+      const response = await axios.post("/api/chat/create", { name, gradientId });
       return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["chats"] });
       setNewChatName("");
+      setNewChatGradientId(undefined);
       setIsNewChatDialogOpen(false);
       toast.success("Chat created successfully");
     },
@@ -150,7 +152,10 @@ export default function Home() {
 
   const handleCreateChat = () => {
     if (newChatName.trim()) {
-      createChatMutation.mutate(newChatName.trim());
+      createChatMutation.mutate({
+        name: newChatName.trim(),
+        gradientId: newChatGradientId,
+      });
     }
   };
 
@@ -294,18 +299,44 @@ export default function Home() {
             <AlertDialogHeader>
               <AlertDialogTitle>Create New Chat</AlertDialogTitle>
               <AlertDialogDescription>
-                <Input
-                  value={newChatName}
-                  onChange={(e) => setNewChatName(e.target.value)}
-                  placeholder="Enter chat name"
-                  className="mt-2"
-                  autoFocus
-                />
+                <div className="space-y-4">
+                  <Input
+                    value={newChatName}
+                    onChange={(e) => setNewChatName(e.target.value)}
+                    placeholder="Enter chat name"
+                    className="mt-2"
+                    autoFocus
+                  />
+                  <div>
+                    <label className="text-sm text-muted-foreground">
+                      Choose Theme (optional)
+                    </label>
+                    <div className="grid grid-cols-5 gap-2 mt-2">
+                      {gradientThemes.map((theme) => (
+                        <button
+                          key={theme.id}
+                          type="button"
+                          className={`${theme.gradient} h-8 rounded-md transition-all ${
+                            newChatGradientId === theme.id
+                              ? "ring-2 ring-offset-2 ring-black"
+                              : ""
+                          }`}
+                          onClick={() => setNewChatGradientId(theme.id)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel type="button">Cancel</AlertDialogCancel>
-              <AlertDialogAction type="button" onClick={handleCreateChat}>
+              <AlertDialogCancel onClick={() => {
+                setNewChatName("");
+                setNewChatGradientId(undefined);
+              }}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction onClick={handleCreateChat}>
                 Create
               </AlertDialogAction>
             </AlertDialogFooter>
