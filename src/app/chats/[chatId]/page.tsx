@@ -5,6 +5,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import TextEditor from "@/components/TextEditor";
 import "react-pdf/dist/esm/Page/TextLayer.css";
 import "react-pdf/dist/esm/Page/AnnotationLayer.css";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Ensure PDF.js worker is loaded
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/legacy/build/pdf.worker.min.mjs`;
@@ -42,8 +43,14 @@ const PDFViewer = () => {
           file={(pdfUrl as string) || ""}
           onLoadSuccess={handleLoadSuccess}
           onLoadError={handleLoadError}
-          loading={<div>Loading PDF...</div>}
-          className="space-y-4" // Add vertical spacing between pages
+          loading={
+            <div className="space-y-4">
+              <Skeleton className="h-[842px] w-[595px] mx-auto" />{" "}
+              {/* A4 dimensions in pixels */}
+              <Skeleton className="h-[842px] w-[595px] mx-auto" />
+            </div>
+          }
+          className="space-y-4"
         >
           {numPages && (
             <>
@@ -51,9 +58,10 @@ const PDFViewer = () => {
                 <Page
                   key={`page_${index + 1}`}
                   pageNumber={index + 1}
-                  renderTextLayer={true} // Enable text selection
-                  renderAnnotationLayer={true} // Enable annotations
-                  className="shadow-md mb-4 w-full" // Add shadow and margin between pages
+                  renderTextLayer={true}
+                  renderAnnotationLayer={true}
+                  className="shadow-md mb-4 mx-auto"
+                  width={595} // A4 width in pixels
                 />
               ))}
             </>

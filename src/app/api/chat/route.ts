@@ -137,60 +137,6 @@ export async function POST(req: Request, res: Response) {
   }
 }
 
-// export async function GET(req: Request) {
-//   try {
-//     const { userId } = auth();
-//     if (!userId) {
-//       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-//     }
-
-//     const { searchParams } = new URL(req.url);
-//     const chatId = searchParams.get("chatId");
-//     const searchQuery = searchParams.get("search");
-
-//     if (!chatId) {
-//       return NextResponse.json(
-//         { error: "Chat ID is required" },
-//         { status: 400 }
-//       );
-//     }
-
-//     // Query to fetch file with associated chat info
-//     const pdf = await db
-//       .select({
-//         id: chats.id,
-//         pdfName: files.name,
-//         pdfUrl: files.url,
-//         createdAt: chats.createdAt,
-//         fileKey: files.fileKey,
-//         isSelected: files.isSelected,
-//       })
-//       .from(chats)
-//       .leftJoin(files, eq(chats.id, files.chatId))
-//       .where(eq(chats.id, parseInt(chatId)));
-
-//     if (!pdf.length) {
-//       return NextResponse.json({ error: "PDF not found" }, { status: 404 });
-//     }
-
-//     let similarChunks = null;
-//     if (searchQuery) {
-//       similarChunks = await findSimilarChunks(searchQuery, parseInt(chatId));
-//     }
-
-//     return NextResponse.json({
-//       pdf: pdf,
-//       similarChunks,
-//     });
-//   } catch (err) {
-//     console.error(err);
-//     return NextResponse.json(
-//       { error: "Internal server error" },
-//       { status: 500 }
-//     );
-//   }
-// }
-
 export async function GET(req: Request) {
   const { userId } = auth();
 
@@ -200,10 +146,7 @@ export async function GET(req: Request) {
 
   try {
     const userChats = await db
-      .select({
-        id: chats.id,
-        name: chats.name,
-      })
+      .select()
       .from(chats)
       .where(eq(chats.userId, userId));
 

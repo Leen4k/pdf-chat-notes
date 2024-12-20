@@ -35,6 +35,8 @@ import { softDeleteFile } from "@/actions/deleteFile";
 import { TbRestore } from "react-icons/tb";
 import toast from "react-hot-toast";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { TbEdit } from "react-icons/tb";
 
 // Type definition remains the same
 type DocumentChat = {
@@ -61,6 +63,12 @@ type DialogConfig = {
   actionLabel: string;
   actionButtonClass?: string;
 };
+
+interface RenameDialogState {
+  isOpen: boolean;
+  fileId: string | null;
+  currentName: string;
+}
 
 // Fetch document chats
 const fetchDocumentChats = async (chatId: string) => {
@@ -124,6 +132,12 @@ export function AppSidebar() {
     description: '',
     actionLabel: '',
     actionButtonClass: ''
+  });
+
+  const [renameDialog, setRenameDialog] = useState<RenameDialogState>({
+    isOpen: false,
+    fileId: null,
+    currentName: "",
   });
 
   // Soft delete mutation
@@ -373,6 +387,21 @@ export function AppSidebar() {
     },
   });
 
+  // Add rename mutation
+  const renameMutation = useMutation({
+    mutationFn: async ({ fileId, newName }: { fileId: string; newName: string }) => {
+      const response = await axios.patch("/api/file/rename", { fileId, newName });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(["documentChats"]);
+      toast.success("File renamed successfully");
+    },
+    onError: () => {
+      toast.error("Failed to rename file");
+    },
+  });
+
   return (
     <>
       <Sidebar>
@@ -399,38 +428,52 @@ export function AppSidebar() {
                       <SidebarMenuItem key={chat.id} className="relative group">
                         <SidebarMenuButton asChild>
                           <Link
-                            className="relative w-full flex items-center"
+                            className="relative w-full flex items-center group"
                             href={`/chats/${chat.chatId}?pdfUrl=${chat.pdfUrl}`}
                           >
-                            <GrDocumentPdf />
-                            <span className="ml-2 flex-grow flex-1">
-                              {chat.pdfName.slice(0, 10)}...
-                            </span>
-                            <Checkbox
-                              checked={chat.isSelected}
-                              onCheckedChange={() =>
-                                handleToggleSelection(chat.id, chat.isSelected)
-                              }
-                              className="ml-2"
-                            />
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="ml-2"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                openDialog({
-                                  type: 'softDelete',
-                                  fileId: chat.id,
-                                  title: 'Move to Trash?',
-                                  description: 'This will move the file to trash',
-                                  actionLabel: 'Move to Trash',
-                                  actionButtonClass: 'bg-red-500 hover:bg-red-600'
-                                });
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4 text-red-500" />
-                            </Button>
+                            <GrDocumentPdf className="flex-shrink-0" />
+                            <div className="ml-2 flex-grow truncate flex items-center">
+                              <span className="truncate" title={chat.pdfName}>
+                                {chat.pdfName}
+                              </span>
+                              <button
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setRenameDialog({
+                                    isOpen: true,
+                                    fileId: chat.id,
+                                    currentName: chat.pdfName,
+                                  });
+                                }}
+                                className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <TbEdit className="h-4 w-4" />
+                              </button>
+                            </div>
+                            <div className="flex-shrink-0 flex items-center gap-2 ml-2">
+                              <Checkbox
+                                checked={chat.isSelected}
+                                onCheckedChange={() => handleToggleSelection(chat.id, chat.isSelected)}
+                              />
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  openDialog({
+                                    type: 'softDelete',
+                                    fileId: chat.id,
+                                    title: 'Move to Trash?',
+                                    description: 'This will move the file to trash',
+                                    actionLabel: 'Move to Trash',
+                                    actionButtonClass: 'bg-red-500 hover:bg-red-600'
+                                  });
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4 text-red-500" />
+                              </Button>
+                            </div>
                           </Link>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
@@ -456,43 +499,45 @@ export function AppSidebar() {
                   trashItems?.map((item: TrashItem) => (
                     <SidebarMenuItem key={item.id}>
                       <SidebarMenuButton asChild>
-                        <div className="flex">
-                          <GrDocumentPdf />
-                          <span className="flex-1">{item.fileName} </span>
-                          <Button
-                            variant="ghost"
-                            onClick={() => 
-                              openDialog({
-                                type: 'restore',
-                                fileId: item.fileId,
-                                title: 'Restore File?',
-                                description: 'This will restore the file from trash',
-                                actionLabel: 'Restore',
-                                actionButtonClass: 'bg-green-500 hover:bg-green-600'
-                              })
-                            }
-                          >
-                            {" "}
-                            <TbRestore />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="ml-2"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              openDialog({
-                                type: 'hardDelete',
-                                fileId: item.fileId,
-                                title: 'Delete Permanently?',
-                                description: 'This action cannot be undone',
-                                actionLabel: 'Delete Forever',
-                                actionButtonClass: 'bg-red-500 hover:bg-red-600'
-                              });
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
+                        <div className="flex items-center">
+                          <GrDocumentPdf className="flex-shrink-0" />
+                          <span className="flex-grow truncate mx-2" title={item.fileName}>
+                            {item.fileName}
+                          </span>
+                          <div className="flex-shrink-0 flex gap-2">
+                            <Button
+                              variant="ghost"
+                              onClick={() => 
+                                openDialog({
+                                  type: 'restore',
+                                  fileId: item.fileId,
+                                  title: 'Restore File?',
+                                  description: 'This will restore the file from trash',
+                                  actionLabel: 'Restore',
+                                  actionButtonClass: 'bg-green-500 hover:bg-green-600'
+                                })
+                              }
+                            >
+                              <TbRestore />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                openDialog({
+                                  type: 'hardDelete',
+                                  fileId: item.fileId,
+                                  title: 'Delete Permanently?',
+                                  description: 'This action cannot be undone',
+                                  actionLabel: 'Delete Forever',
+                                  actionButtonClass: 'bg-red-500 hover:bg-red-600'
+                                });
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </div>
                         </div>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -523,6 +568,41 @@ export function AppSidebar() {
               className={dialogConfig.actionButtonClass}
             >
               {dialogConfig.actionLabel}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog 
+        open={renameDialog.isOpen} 
+        onOpenChange={(open) => !open && setRenameDialog(prev => ({ ...prev, isOpen: false }))}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Rename File</AlertDialogTitle>
+            <AlertDialogDescription>
+              <Input
+                value={renameDialog.currentName}
+                onChange={(e) => setRenameDialog(prev => ({ ...prev, currentName: e.target.value }))}
+                placeholder="Enter new name"
+                className="mt-2"
+              />
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (renameDialog.fileId && renameDialog.currentName.trim()) {
+                  renameMutation.mutate({
+                    fileId: renameDialog.fileId,
+                    newName: renameDialog.currentName.trim()
+                  });
+                  setRenameDialog({ isOpen: false, fileId: null, currentName: "" });
+                }
+              }}
+            >
+              Rename
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

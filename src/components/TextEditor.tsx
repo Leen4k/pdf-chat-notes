@@ -26,6 +26,21 @@ import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { useParams } from "next/navigation";
 import debounce from "lodash/debounce";
+import html2pdf from "html2pdf.js";
+import { pdfStyles } from "./PdfStyles";
+import { TbFileDownload } from "react-icons/tb";
+import { useState } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
 
 interface TextEditorProps {
   editorContent: string;
@@ -64,7 +79,7 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
       queryClient.invalidateQueries({
         queryKey: ["editorContent", chatId],
       });
-    }
+    },
   });
 
   const debouncedSave = debounce((content: string) => {
@@ -183,6 +198,53 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
       toast.error("Failed to get AI suggestions", { id: "ai-suggestion" });
     },
   });
+
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [exportFilename, setExportFilename] = useState(`document-${new Date().toISOString().split("T")[0]}.pdf`);
+
+  const exportToPDF = (customFilename?: string) => {
+    if (!editor) return;
+
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = `
+      <style>${pdfStyles}</style>
+      <div class="prose max-w-none mx-4 my-4">
+        ${editor.getHTML()}
+      </div>
+    `;
+
+    const defaultFilename = `document-${new Date().toISOString().split("T")[0]}.pdf`;
+    
+    const opt = {
+      margin: [0.5, 0.5],
+      filename: customFilename || defaultFilename,
+      image: { type: "jpeg", quality: 0.98 },
+      html2canvas: {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      },
+      jsPDF: {
+        unit: "in",
+        format: "letter",
+        orientation: "portrait",
+      },
+    };
+
+    toast.loading("Generating PDF...", { id: "pdf-export" });
+
+    html2pdf()
+      .set(opt)
+      .from(tempDiv)
+      .save()
+      .then(() => {
+        toast.success("PDF exported successfully", { id: "pdf-export" });
+      })
+      .catch((error) => {
+        console.error("PDF export error:", error);
+        toast.error("Failed to export PDF", { id: "pdf-export" });
+      });
+  };
 
   if (!editor) {
     return null;
@@ -353,6 +415,13 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
           >
             ↷
           </MenuButton>
+          <div className="w-px h-6 bg-gray-300 mx-1" />
+          <MenuButton 
+            onClick={() => setIsExportDialogOpen(true)} 
+            title="Export as PDF"
+          >
+            <TbFileDownload className="w-5 h-5" />
+          </MenuButton>
         </div>
         <div className="relative">
           <EditorContent editor={editor} />
@@ -391,6 +460,30 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
           </AnimatePresence>
         </div>
       </div>
+      <AlertDialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Export as PDF</AlertDialogTitle>
+            <AlertDialogDescription>
+              <Input
+                value={exportFilename}
+                onChange={(e) => setExportFilename(e.target.value)}
+                placeholder="Enter file name"
+                className="mt-2"
+              />
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              const filename = exportFilename.endsWith('.pdf') ? exportFilename : `${exportFilename}.pdf`;
+              exportToPDF(filename);
+            }}>
+              Export
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </TooltipProvider>
   );
 };

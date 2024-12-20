@@ -20,6 +20,7 @@ export const chats = pgTable("chats", {
   userId: varchar("user_id", { length: 256 }).notNull(), // Clerk user ID
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  gradientId: integer("gradient_id"),
 });
 
 // Files uploaded by users

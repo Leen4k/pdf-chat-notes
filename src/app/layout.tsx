@@ -27,9 +27,9 @@ export default function RootLayout({
       <html lang="en">
         <body className={figtree.className}>
           <QueryWrapper>
-            <nav className="fixed flex justify-end w-screen h-10 px-8">
-              <UserButton />
-            </nav>
+            {/* <nav className="fixed flex justify-end w-screen h-10 px-8">
+              
+            </nav> */}
             {children}
           </QueryWrapper>
         </body>
