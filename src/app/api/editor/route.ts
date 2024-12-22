@@ -14,37 +14,44 @@ export async function POST(req: Request) {
 
     const { content, chatId } = await req.json();
 
+    if (!content || !chatId) {
+      return NextResponse.json(
+        { error: "Content and chatId are required" },
+        { status: 400 }
+      );
+    }
+
     // Check if content already exists for this chat
     const existing = await db
       .select()
       .from(editorContent)
-      .where(eq(editorContent.chatId, chatId));
+      .where(eq(editorContent.chatId, parseInt(chatId)));
 
+    let result;
     if (existing.length > 0) {
       // Update existing content
-      const [updated] = await db
+      [result] = await db
         .update(editorContent)
         .set({
           content,
           updatedAt: new Date(),
         })
-        .where(eq(editorContent.chatId, chatId))
+        .where(eq(editorContent.chatId, parseInt(chatId)))
         .returning();
-      return NextResponse.json({ data: updated });
+    } else {
+      // Create new content
+      [result] = await db
+        .insert(editorContent)
+        .values({
+          chatId: parseInt(chatId),
+          content,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
     }
 
-    // Create new content
-    const [created] = await db
-      .insert(editorContent)
-      .values({
-        chatId,
-        content,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .returning();
-
-    return NextResponse.json({ data: created });
+    return NextResponse.json({ data: result });
   } catch (error) {
     console.error("Error saving editor content:", error);
     return NextResponse.json(

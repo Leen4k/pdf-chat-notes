@@ -12,17 +12,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { PlusCircle, MoreVertical, Pencil, Trash } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { useState, useEffect } from "react";
+import { AlertDialog, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
@@ -40,7 +31,32 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import ThemeToggler from "@/components/themes/ThemeToggler";
+import { GradientDialog } from "@/components/dialogs/GradientDialog";
+import { ConfirmationDialog } from "@/components/dialogs/ConfirmationDialog";
+import { ChatCard } from "@/components/ChatCard";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  rectSortingStrategy,
+} from "@dnd-kit/sortable";
+
+enum DialogTypes {
+  EDIT = "edit",
+  DELETE = "delete",
+}
 
 interface Chat {
   id: number;
@@ -75,11 +91,12 @@ export default function Home() {
   const [isNewChatDialogOpen, setIsNewChatDialogOpen] = useState(false);
   const [newChatName, setNewChatName] = useState("");
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [chatToDelete, setChatToDelete] = useState<Chat | null>(null);
-  const [newChatGradientId, setNewChatGradientId] = useState<number | undefined>();
+  const [dialogType, setDialogType] = useState<DialogTypes | null>(null);
+  const [newChatGradientId, setNewChatGradientId] = useState<
+    number | undefined
+  >();
   const queryClient = useQueryClient();
+  const [orderedChats, setOrderedChats] = useState<Chat[]>([]);
 
   const { data: chats, isLoading } = useQuery({
     queryKey: ["chats"],
@@ -90,9 +107,31 @@ export default function Home() {
     enabled: isAuth,
   });
 
+  useEffect(() => {
+    if (chats) {
+      setOrderedChats(chats);
+    }
+  }, [chats]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
   const createChatMutation = useMutation({
-    mutationFn: async ({ name, gradientId }: { name: string; gradientId?: number }) => {
-      const response = await axios.post("/api/chat/create", { name, gradientId });
+    mutationFn: async ({
+      name,
+      gradientId,
+    }: {
+      name: string;
+      gradientId?: number;
+    }) => {
+      const response = await axios.post("/api/chat/create", {
+        name,
+        gradientId,
+      });
       return response.data;
     },
     onSuccess: () => {
@@ -125,7 +164,7 @@ export default function Home() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["chats"] });
-      setIsEditDialogOpen(false);
+      setDialogType(null);
       setSelectedChat(null);
       toast.success("Chat updated successfully");
     },
@@ -141,12 +180,33 @@ export default function Home() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["chats"] });
-      setIsDeleteDialogOpen(false);
-      setChatToDelete(null);
+      setDialogType(null);
+      setSelectedChat(null);
       toast.success("Chat deleted successfully");
     },
     onError: () => {
       toast.error("Failed to delete chat");
+    },
+  });
+
+  const updateChatOrderMutation = useMutation({
+    mutationFn: async ({
+      chatId,
+      newPosition,
+    }: {
+      chatId: number;
+      newPosition: number;
+    }) => {
+      const response = await axios.patch(`/api/chat/${chatId}/position`, {
+        newPosition,
+      });
+      return response.data;
+    },
+    onError: () => {
+      toast.error("Failed to update chat order");
+      if (chats) {
+        setOrderedChats(chats);
+      }
     },
   });
 
@@ -159,30 +219,36 @@ export default function Home() {
     }
   };
 
-  const handleEditDialogChange = (open: boolean) => {
-    setIsEditDialogOpen(open);
+  const handleDialogChange = (open: boolean) => {
     if (!open) {
+      setDialogType(null);
       setSelectedChat(null);
     }
   };
 
-  const handleDeleteDialogChange = (open: boolean) => {
-    setIsDeleteDialogOpen(open);
-    if (!open) {
-      setChatToDelete(null);
+  const handleDragEnd = async (event: any) => {
+    const { active, over } = event;
+
+    if (active.id !== over.id) {
+      setOrderedChats((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over.id);
+
+        const newOrder = arrayMove(items, oldIndex, newIndex);
+
+        updateChatOrderMutation.mutate({
+          chatId: active.id,
+          newPosition: newIndex,
+        });
+
+        return newOrder;
+      });
     }
   };
 
   return (
-    <div className="w-screen min-h-screen flex items-center">
-      <div className="container mx-auto my-auto p-4">
-        {/* <div className="text-center mb-8">
-          <h1 className="text-5xl font-bold">Welcome to N4K's AIPDF</h1>
-          <p className="text-slate-700 mt-2">
-            Create and manage your conversations
-          </p>
-        </div> */}
-
+    <div className="w-screen min-h-screen flex">
+      <div className="container mx-auto p-4">
         <SignedIn>
           <div className="space-y-8">
             <div className="flex justify-between items-center">
@@ -190,91 +256,43 @@ export default function Home() {
                 <PlusCircle className="mr-2 h-4 w-4" />
                 New Chat
               </Button>
-              <UserButton afterSignOutUrl="/" />
+              <div className="flex items-center gap-2">
+                {" "}
+                <ThemeToggler />
+                <UserButton afterSignOutUrl="/" />
+              </div>
             </div>
 
             {isLoading ? (
               <ChatSkeleton />
             ) : (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {chats?.map((chat: Chat) => (
-                  <Card
-                    key={chat.id}
-                    className="hover:shadow-lg transition-shadow h-full group"
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <SortableContext
+                    items={orderedChats.map((chat) => chat.id)}
+                    strategy={rectSortingStrategy}
                   >
-                    <CardHeader className="flex flex-row items-center justify-between">
-                      <div className="flex-1 overflow-hidden">
-                        <CardTitle className="truncate" title={chat.name}>
-                          {chat.name}
-                        </CardTitle>
-                        <CardDescription>
-                          Created{" "}
-                          {chat.createdAt
-                            ? format(new Date(chat.createdAt), "PPP")
-                            : "Unknown date"}
-                        </CardDescription>
-                      </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setSelectedChat(chat);
-                              setIsEditDialogOpen(true);
-                            }}
-                          >
-                            <Pencil className="mr-2 h-4 w-4" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-red-600"
-                            onClick={() => {
-                              setChatToDelete(chat);
-                              setIsDeleteDialogOpen(true);
-                            }}
-                          >
-                            <Trash className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </CardHeader>
-                    <Link href={`/chats/${chat.id}`}>
-                      <CardContent>
-                        <div
-                          className={`w-full h-24 rounded-md flex items-center justify-center ${
-                            chat.gradientId
-                              ? gradientThemes.find(
-                                  (t) => t.id === chat.gradientId
-                                )?.gradient
-                              : "bg-gray-100"
-                          }`}
-                        >
-                          <span
-                            className={`${
-                              chat.gradientId ? "text-white" : "text-gray-600"
-                            } font-medium`}
-                          >
-                            {chat.name.slice(0, 2).toUpperCase()}
-                          </span>
-                        </div>
-                      </CardContent>
-                      <CardFooter>
-                        <Button className="w-full" variant="outline">
-                          Open Chat
-                        </Button>
-                      </CardFooter>
-                    </Link>
-                  </Card>
-                ))}
-              </div>
+                    {orderedChats.map((chat: Chat) => (
+                      <ChatCard
+                        key={chat.id}
+                        chat={chat}
+                        onEditClick={(chat) => {
+                          setSelectedChat(chat);
+                          setDialogType(DialogTypes.EDIT);
+                        }}
+                        onDeleteClick={(chat) => {
+                          setSelectedChat(chat);
+                          setDialogType(DialogTypes.DELETE);
+                        }}
+                      />
+                    ))}
+                  </SortableContext>
+                </div>
+              </DndContext>
             )}
           </div>
         </SignedIn>
@@ -290,149 +308,61 @@ export default function Home() {
           </div>
         </SignedOut>
 
-        {/* Dialogs */}
-        <AlertDialog
+        <GradientDialog
           open={isNewChatDialogOpen}
-          onOpenChange={setIsNewChatDialogOpen}
-        >
-          <AlertDialogContent className="sm:max-w-[425px]">
-            <AlertDialogHeader>
-              <AlertDialogTitle>Create New Chat</AlertDialogTitle>
-              <AlertDialogDescription>
-                <div className="space-y-4">
-                  <Input
-                    value={newChatName}
-                    onChange={(e) => setNewChatName(e.target.value)}
-                    placeholder="Enter chat name"
-                    className="mt-2"
-                    autoFocus
-                  />
-                  <div>
-                    <label className="text-sm text-muted-foreground">
-                      Choose Theme (optional)
-                    </label>
-                    <div className="grid grid-cols-5 gap-2 mt-2">
-                      {gradientThemes.map((theme) => (
-                        <button
-                          key={theme.id}
-                          type="button"
-                          className={`${theme.gradient} h-8 rounded-md transition-all ${
-                            newChatGradientId === theme.id
-                              ? "ring-2 ring-offset-2 ring-black"
-                              : ""
-                          }`}
-                          onClick={() => setNewChatGradientId(theme.id)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => {
-                setNewChatName("");
-                setNewChatGradientId(undefined);
-              }}>
-                Cancel
-              </AlertDialogCancel>
-              <AlertDialogAction onClick={handleCreateChat}>
-                Create
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+          onOpenChange={(open) => {
+            setIsNewChatDialogOpen(open);
+            if (!open) {
+              setNewChatName("");
+              setNewChatGradientId(undefined);
+            }
+          }}
+          title="Create New Chat"
+          name={newChatName}
+          onNameChange={setNewChatName}
+          gradientId={newChatGradientId}
+          onGradientChange={setNewChatGradientId}
+          onConfirm={handleCreateChat}
+          confirmText="Create"
+        />
 
-        <AlertDialog
-          open={isEditDialogOpen}
-          onOpenChange={handleEditDialogChange}
-        >
-          <AlertDialogContent className="sm:max-w-[425px]">
-            <AlertDialogHeader>
-              <AlertDialogTitle>Edit Chat</AlertDialogTitle>
-              <AlertDialogDescription>
-                <div className="space-y-4">
-                  <Input
-                    value={selectedChat?.name || ""}
-                    onChange={(e) =>
-                      setSelectedChat((prev) =>
-                        prev ? { ...prev, name: e.target.value } : null
-                      )
-                    }
-                    placeholder="Enter chat name"
-                    autoFocus
-                  />
-                  <div className="grid grid-cols-5 gap-2">
-                    {gradientThemes.map((theme) => (
-                      <button
-                        key={theme.id}
-                        type="button"
-                        className={`${
-                          theme.gradient
-                        } h-8 rounded-md transition-all ${
-                          selectedChat?.gradientId === theme.id
-                            ? "ring-2 ring-offset-2 ring-black"
-                            : ""
-                        }`}
-                        onClick={() =>
-                          setSelectedChat((prev) =>
-                            prev ? { ...prev, gradientId: theme.id } : null
-                          )
-                        }
-                      />
-                    ))}
-                  </div>
-                </div>
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel type="button">Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                type="button"
-                onClick={async () => {
-                  if (selectedChat) {
-                    await updateChatMutation.mutateAsync({
-                      id: selectedChat.id,
-                      name: selectedChat.name,
-                      gradientId: selectedChat.gradientId,
-                    });
-                  }
-                }}
-              >
-                Save Changes
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <GradientDialog
+          open={dialogType === DialogTypes.EDIT}
+          onOpenChange={handleDialogChange}
+          title="Edit Chat"
+          name={selectedChat?.name || ""}
+          onNameChange={(name) =>
+            setSelectedChat((prev) => (prev ? { ...prev, name } : null))
+          }
+          gradientId={selectedChat?.gradientId}
+          onGradientChange={(gradientId) =>
+            setSelectedChat((prev) => (prev ? { ...prev, gradientId } : null))
+          }
+          onConfirm={() => {
+            if (selectedChat) {
+              updateChatMutation.mutate({
+                id: selectedChat.id,
+                name: selectedChat.name,
+                gradientId: selectedChat.gradientId,
+              });
+            }
+          }}
+          confirmText="Save Changes"
+        />
 
-        <AlertDialog
-          open={isDeleteDialogOpen}
-          onOpenChange={handleDeleteDialogChange}
-        >
-          <AlertDialogContent className="sm:max-w-[425px]">
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete Chat</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to delete "{chatToDelete?.name}"? This
-                action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel type="button">Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                type="button"
-                onClick={async () => {
-                  if (chatToDelete) {
-                    await deleteChatMutation.mutateAsync(chatToDelete.id);
-                  }
-                }}
-                className="bg-red-600 hover:bg-red-700"
-              >
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <ConfirmationDialog
+          open={dialogType === DialogTypes.DELETE}
+          onOpenChange={handleDialogChange}
+          title="Delete Chat"
+          description={`Are you sure you want to delete "${selectedChat?.name}"? This action cannot be undone.`}
+          onConfirm={() => {
+            if (selectedChat) {
+              deleteChatMutation.mutate(selectedChat.id);
+            }
+          }}
+          confirmText="Delete"
+          confirmVariant="destructive"
+        />
       </div>
     </div>
   );

@@ -9,6 +9,7 @@ import {
   UserButton,
 } from "@clerk/nextjs";
 import QueryWrapper from "@/lib/QueryWrapper";
+import { ThemeProvider } from "@/components/themes/ThemeProvider";
 
 const figtree = Figtree({ subsets: ["latin"] });
 
@@ -27,10 +28,14 @@ export default function RootLayout({
       <html lang="en">
         <body className={figtree.className}>
           <QueryWrapper>
-            {/* <nav className="fixed flex justify-end w-screen h-10 px-8">
-              
-            </nav> */}
-            {children}
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="system"
+              enableSystem
+              disableTransitionOnChange
+            >
+              {children}
+            </ThemeProvider>
           </QueryWrapper>
         </body>
       </html>

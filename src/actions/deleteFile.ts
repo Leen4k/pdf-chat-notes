@@ -16,7 +16,8 @@ export async function softDeleteFile(fileId: number) {
   await db.insert(trashItems).values({
     fileId: file.id,
     originalFileData: JSON.stringify(file), // Serialize full file data
-    restoreExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days expiration
+    restoreExpiresAt: new Date(Date.now() + 30 * 1000),
+    // restoreExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days expiration
   });
 
   // Mark file as deleted

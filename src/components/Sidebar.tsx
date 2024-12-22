@@ -56,7 +56,7 @@ type TrashItem = {
 
 type DialogConfig = {
   isOpen: boolean;
-  type: 'softDelete' | 'restore' | 'hardDelete' | null;
+  type: "softDelete" | "restore" | "hardDelete" | null;
   fileId: string | null;
   title: string;
   description: string;
@@ -128,10 +128,10 @@ export function AppSidebar() {
     isOpen: false,
     type: null,
     fileId: null,
-    title: '',
-    description: '',
-    actionLabel: '',
-    actionButtonClass: ''
+    title: "",
+    description: "",
+    actionLabel: "",
+    actionButtonClass: "",
   });
 
   const [renameDialog, setRenameDialog] = useState<RenameDialogState>({
@@ -306,19 +306,19 @@ export function AppSidebar() {
     },
   });
 
-  const openDialog = (config: Omit<DialogConfig, 'isOpen'>) => {
+  const openDialog = (config: Omit<DialogConfig, "isOpen">) => {
     setDialogConfig({
       ...config,
-      isOpen: true
+      isOpen: true,
     });
   };
 
   const closeDialog = () => {
-    setDialogConfig(prev => ({
+    setDialogConfig((prev) => ({
       ...prev,
       isOpen: false,
       fileId: null,
-      type: null
+      type: null,
     }));
   };
 
@@ -327,13 +327,13 @@ export function AppSidebar() {
     if (!dialogConfig.fileId) return;
 
     switch (dialogConfig.type) {
-      case 'softDelete':
+      case "softDelete":
         softDeleteMutation.mutate(parseInt(dialogConfig.fileId));
         break;
-      case 'restore':
+      case "restore":
         restoreFileMutation.mutate(dialogConfig.fileId);
         break;
-      case 'hardDelete':
+      case "hardDelete":
         deleteFileMutation.mutate(dialogConfig.fileId);
         break;
     }
@@ -389,12 +389,21 @@ export function AppSidebar() {
 
   // Add rename mutation
   const renameMutation = useMutation({
-    mutationFn: async ({ fileId, newName }: { fileId: string; newName: string }) => {
-      const response = await axios.patch("/api/file/rename", { fileId, newName });
+    mutationFn: async ({
+      fileId,
+      newName,
+    }: {
+      fileId: string;
+      newName: string;
+    }) => {
+      const response = await axios.patch("/api/file/rename", {
+        fileId,
+        newName,
+      });
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(["documentChats"]);
+      queryClient.invalidateQueries({ queryKey: ["documentChats"] });
       toast.success("File renamed successfully");
     },
     onError: () => {
@@ -454,7 +463,12 @@ export function AppSidebar() {
                             <div className="flex-shrink-0 flex items-center gap-2 ml-2">
                               <Checkbox
                                 checked={chat.isSelected}
-                                onCheckedChange={() => handleToggleSelection(chat.id, chat.isSelected)}
+                                onCheckedChange={() =>
+                                  handleToggleSelection(
+                                    chat.id,
+                                    chat.isSelected
+                                  )
+                                }
                               />
                               <Button
                                 variant="ghost"
@@ -462,12 +476,14 @@ export function AppSidebar() {
                                 onClick={(e) => {
                                   e.preventDefault();
                                   openDialog({
-                                    type: 'softDelete',
+                                    type: "softDelete",
                                     fileId: chat.id,
-                                    title: 'Move to Trash?',
-                                    description: 'This will move the file to trash',
-                                    actionLabel: 'Move to Trash',
-                                    actionButtonClass: 'bg-red-500 hover:bg-red-600'
+                                    title: "Move to Trash?",
+                                    description:
+                                      "This will move the file to trash",
+                                    actionLabel: "Move to Trash",
+                                    actionButtonClass:
+                                      "bg-red-500 hover:bg-red-600",
                                   });
                                 }}
                               >
@@ -501,20 +517,25 @@ export function AppSidebar() {
                       <SidebarMenuButton asChild>
                         <div className="flex items-center">
                           <GrDocumentPdf className="flex-shrink-0" />
-                          <span className="flex-grow truncate mx-2" title={item.fileName}>
+                          <span
+                            className="flex-grow truncate mx-2"
+                            title={item.fileName}
+                          >
                             {item.fileName}
                           </span>
                           <div className="flex-shrink-0 flex gap-2">
                             <Button
                               variant="ghost"
-                              onClick={() => 
+                              onClick={() =>
                                 openDialog({
-                                  type: 'restore',
+                                  type: "restore",
                                   fileId: item.fileId,
-                                  title: 'Restore File?',
-                                  description: 'This will restore the file from trash',
-                                  actionLabel: 'Restore',
-                                  actionButtonClass: 'bg-green-500 hover:bg-green-600'
+                                  title: "Restore File?",
+                                  description:
+                                    "This will restore the file from trash",
+                                  actionLabel: "Restore",
+                                  actionButtonClass:
+                                    "bg-green-500 hover:bg-green-600",
                                 })
                               }
                             >
@@ -526,12 +547,13 @@ export function AppSidebar() {
                               onClick={(e) => {
                                 e.preventDefault();
                                 openDialog({
-                                  type: 'hardDelete',
+                                  type: "hardDelete",
                                   fileId: item.fileId,
-                                  title: 'Delete Permanently?',
-                                  description: 'This action cannot be undone',
-                                  actionLabel: 'Delete Forever',
-                                  actionButtonClass: 'bg-red-500 hover:bg-red-600'
+                                  title: "Delete Permanently?",
+                                  description: "This action cannot be undone",
+                                  actionLabel: "Delete Forever",
+                                  actionButtonClass:
+                                    "bg-red-500 hover:bg-red-600",
                                 });
                               }}
                             >
@@ -550,10 +572,7 @@ export function AppSidebar() {
       </Sidebar>
 
       {/* Reusable Confirmation Dialog */}
-      <AlertDialog
-        open={dialogConfig.isOpen}
-        onOpenChange={closeDialog}
-      >
+      <AlertDialog open={dialogConfig.isOpen} onOpenChange={closeDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{dialogConfig.title}</AlertDialogTitle>
@@ -573,9 +592,11 @@ export function AppSidebar() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog 
-        open={renameDialog.isOpen} 
-        onOpenChange={(open) => !open && setRenameDialog(prev => ({ ...prev, isOpen: false }))}
+      <AlertDialog
+        open={renameDialog.isOpen}
+        onOpenChange={(open) =>
+          !open && setRenameDialog((prev) => ({ ...prev, isOpen: false }))
+        }
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -583,7 +604,12 @@ export function AppSidebar() {
             <AlertDialogDescription>
               <Input
                 value={renameDialog.currentName}
-                onChange={(e) => setRenameDialog(prev => ({ ...prev, currentName: e.target.value }))}
+                onChange={(e) =>
+                  setRenameDialog((prev) => ({
+                    ...prev,
+                    currentName: e.target.value,
+                  }))
+                }
                 placeholder="Enter new name"
                 className="mt-2"
               />
@@ -596,9 +622,13 @@ export function AppSidebar() {
                 if (renameDialog.fileId && renameDialog.currentName.trim()) {
                   renameMutation.mutate({
                     fileId: renameDialog.fileId,
-                    newName: renameDialog.currentName.trim()
+                    newName: renameDialog.currentName.trim(),
                   });
-                  setRenameDialog({ isOpen: false, fileId: null, currentName: "" });
+                  setRenameDialog({
+                    isOpen: false,
+                    fileId: null,
+                    currentName: "",
+                  });
                 }
               }}
             >

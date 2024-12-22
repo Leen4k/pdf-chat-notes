@@ -1,3 +1,4 @@
+"use client";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import BulletList from "@tiptap/extension-bullet-list";
@@ -29,7 +30,7 @@ import debounce from "lodash/debounce";
 import html2pdf from "html2pdf.js";
 import { pdfStyles } from "./PdfStyles";
 import { TbFileDownload } from "react-icons/tb";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -50,6 +51,7 @@ interface TextEditorProps {
 const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
   const { chatId } = useParams();
   const queryClient = useQueryClient();
+  const [initialContent, setInitialContent] = useState("");
 
   const preprocessContent = (content: string) => {
     // Replace Markdown bold formatting with Tiptap bold markup
@@ -60,12 +62,20 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
     queryKey: ["editorContent", chatId],
     queryFn: async () => {
       const response = await axios.get(`/api/editor?chatId=${chatId}`);
-      return response.data.data?.content || "";
+      const content = response.data.data?.content;
+      setInitialContent(content || "");
+      return content || "";
     },
     staleTime: 0,
-    cacheTime: 0,
+    gcTime: 0,
     refetchOnWindowFocus: true,
   });
+
+  useEffect(() => {
+    if (editor && initialContent) {
+      editor.commands.setContent(initialContent);
+    }
+  }, [initialContent]);
 
   const { mutate: saveContent } = useMutation({
     mutationFn: async (content: string) => {
@@ -135,7 +145,7 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
       onChange(content);
       debouncedSave(content);
     },
-    content: savedContent || preprocessContent(editorContent),
+    content: initialContent || preprocessContent(editorContent),
   });
 
   const { mutate: getAISuggestion } = useMutation({
@@ -168,7 +178,7 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
         const text = data.data;
         const parts = text.split(/(\*\*.*?\*\*)/g);
 
-        const content = parts.map((part) => {
+        const content = parts.map((part: string) => {
           if (part.startsWith("**") && part.endsWith("**")) {
             return {
               type: "text",
@@ -200,7 +210,9 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
   });
 
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
-  const [exportFilename, setExportFilename] = useState(`document-${new Date().toISOString().split("T")[0]}.pdf`);
+  const [exportFilename, setExportFilename] = useState(
+    `document-${new Date().toISOString().split("T")[0]}.pdf`
+  );
 
   const exportToPDF = (customFilename?: string) => {
     if (!editor) return;
@@ -213,8 +225,10 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
       </div>
     `;
 
-    const defaultFilename = `document-${new Date().toISOString().split("T")[0]}.pdf`;
-    
+    const defaultFilename = `document-${
+      new Date().toISOString().split("T")[0]
+    }.pdf`;
+
     const opt = {
       margin: [0.5, 0.5],
       filename: customFilename || defaultFilename,
@@ -240,7 +254,7 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
       .then(() => {
         toast.success("PDF exported successfully", { id: "pdf-export" });
       })
-      .catch((error) => {
+      .catch((error: Error) => {
         console.error("PDF export error:", error);
         toast.error("Failed to export PDF", { id: "pdf-export" });
       });
@@ -416,8 +430,8 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
             ↷
           </MenuButton>
           <div className="w-px h-6 bg-gray-300 mx-1" />
-          <MenuButton 
-            onClick={() => setIsExportDialogOpen(true)} 
+          <MenuButton
+            onClick={() => setIsExportDialogOpen(true)}
             title="Export as PDF"
           >
             <TbFileDownload className="w-5 h-5" />
@@ -460,7 +474,10 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
           </AnimatePresence>
         </div>
       </div>
-      <AlertDialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
+      <AlertDialog
+        open={isExportDialogOpen}
+        onOpenChange={setIsExportDialogOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Export as PDF</AlertDialogTitle>
@@ -475,10 +492,14 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => {
-              const filename = exportFilename.endsWith('.pdf') ? exportFilename : `${exportFilename}.pdf`;
-              exportToPDF(filename);
-            }}>
+            <AlertDialogAction
+              onClick={() => {
+                const filename = exportFilename.endsWith(".pdf")
+                  ? exportFilename
+                  : `${exportFilename}.pdf`;
+                exportToPDF(filename);
+              }}
+            >
               Export
             </AlertDialogAction>
           </AlertDialogFooter>

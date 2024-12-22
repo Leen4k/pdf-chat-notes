@@ -8,7 +8,7 @@ import {
   processAndStoreEmbeddings,
 } from "@/lib/gemini";
 import { chats, fileChunks, files } from "@/lib/db/schema";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, sql, desc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { auth } from "@clerk/nextjs/server";
 import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai";
@@ -148,7 +148,8 @@ export async function GET(req: Request) {
     const userChats = await db
       .select()
       .from(chats)
-      .where(eq(chats.userId, userId));
+      .where(eq(chats.userId, userId))
+      .orderBy(chats.position, desc(chats.updatedAt));
 
     return NextResponse.json({
       status: 200,
