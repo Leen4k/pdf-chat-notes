@@ -29,7 +29,7 @@ import debounce from "lodash/debounce";
 import html2pdf from "html2pdf.js";
 import { pdfStyles } from "./PdfStyles";
 import { TbFileDownload } from "react-icons/tb";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -62,6 +62,8 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
       const response = await axios.get(`/api/editor?chatId=${chatId}`);
       return response.data.data?.content || "";
     },
+    staleTime: 0,
+    cacheTime: 0,
     refetchOnWindowFocus: true,
   });
 
@@ -133,20 +135,8 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
       onChange(content);
       debouncedSave(content);
     },
-    content: savedContent || "",
+    content: savedContent || preprocessContent(editorContent),
   });
-
-  useEffect(() => {
-    if (editor && savedContent && !editor.getText().trim()) {
-      editor.commands.setContent(savedContent);
-    }
-  }, [editor, savedContent]);
-
-  useEffect(() => {
-    return () => {
-      debouncedSave.cancel();
-    };
-  }, [debouncedSave]);
 
   const { mutate: getAISuggestion } = useMutation({
     mutationFn: async (selectedText: string) => {
