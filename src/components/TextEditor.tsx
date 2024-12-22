@@ -29,7 +29,7 @@ import debounce from "lodash/debounce";
 import html2pdf from "html2pdf.js";
 import { pdfStyles } from "./PdfStyles";
 import { TbFileDownload } from "react-icons/tb";
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -62,29 +62,29 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
       const response = await axios.get(`/api/editor?chatId=${chatId}`);
       return response.data.data?.content || "";
     },
-    staleTime: 0,
-    cacheTime: 0,
-    refetchOnWindowFocus: true,
   });
 
   const { mutate: saveContent } = useMutation({
     mutationFn: async (content: string) => {
-      const response = await axios.post("/api/editor", {
+      await axios.post("/api/editor", {
         content,
         chatId,
       });
-      return response.data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["editorContent", chatId],
-      });
+    onError: () => {
+      toast.error("Failed to save content");
     },
   });
 
-  const debouncedSave = debounce((content: string) => {
-    saveContent(content);
-  }, 1000);
+  const debouncedSave = useMemo(
+    () =>
+      debounce((content: string) => {
+        if (content && chatId) {
+          saveContent(content);
+        }
+      }, 1000),
+    [chatId, saveContent]
+  );
 
   const editor = useEditor({
     extensions: [
@@ -135,8 +135,20 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
       onChange(content);
       debouncedSave(content);
     },
-    content: savedContent || preprocessContent(editorContent),
+    content: savedContent || "",
   });
+
+  useEffect(() => {
+    if (editor && savedContent && !editor.getText().trim()) {
+      editor.commands.setContent(savedContent);
+    }
+  }, [editor, savedContent]);
+
+  useEffect(() => {
+    return () => {
+      debouncedSave.cancel();
+    };
+  }, [debouncedSave]);
 
   const { mutate: getAISuggestion } = useMutation({
     mutationFn: async (selectedText: string) => {
