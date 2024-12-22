@@ -1,4 +1,3 @@
-"use client";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import BulletList from "@tiptap/extension-bullet-list";
@@ -51,7 +50,6 @@ interface TextEditorProps {
 const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
   const { chatId } = useParams();
   const queryClient = useQueryClient();
-  const [initialContent, setInitialContent] = useState("");
 
   const preprocessContent = (content: string) => {
     // Replace Markdown bold formatting with Tiptap bold markup
@@ -62,20 +60,10 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
     queryKey: ["editorContent", chatId],
     queryFn: async () => {
       const response = await axios.get(`/api/editor?chatId=${chatId}`);
-      const content = response.data.data?.content;
-      setInitialContent(content || "");
-      return content || "";
+      return response.data.data?.content || "";
     },
-    staleTime: 0,
-    gcTime: 0,
     refetchOnWindowFocus: true,
   });
-
-  useEffect(() => {
-    if (editor && initialContent) {
-      editor.commands.setContent(initialContent);
-    }
-  }, [initialContent]);
 
   const { mutate: saveContent } = useMutation({
     mutationFn: async (content: string) => {
@@ -145,8 +133,20 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
       onChange(content);
       debouncedSave(content);
     },
-    content: initialContent || preprocessContent(editorContent),
+    content: savedContent || "",
   });
+
+  useEffect(() => {
+    if (editor && savedContent && !editor.getText().trim()) {
+      editor.commands.setContent(savedContent);
+    }
+  }, [editor, savedContent]);
+
+  useEffect(() => {
+    return () => {
+      debouncedSave.cancel();
+    };
+  }, [debouncedSave]);
 
   const { mutate: getAISuggestion } = useMutation({
     mutationFn: async (selectedText: string) => {
@@ -178,7 +178,7 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
         const text = data.data;
         const parts = text.split(/(\*\*.*?\*\*)/g);
 
-        const content = parts.map((part: string) => {
+        const content = parts.map((part) => {
           if (part.startsWith("**") && part.endsWith("**")) {
             return {
               type: "text",
@@ -254,7 +254,7 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
       .then(() => {
         toast.success("PDF exported successfully", { id: "pdf-export" });
       })
-      .catch((error: Error) => {
+      .catch((error) => {
         console.error("PDF export error:", error);
         toast.error("Failed to export PDF", { id: "pdf-export" });
       });
