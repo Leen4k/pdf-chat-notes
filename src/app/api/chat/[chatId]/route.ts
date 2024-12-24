@@ -4,6 +4,34 @@ import { auth } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
+export async function GET(
+  req: Request,
+  { params }: { params: { chatId: string } }
+) {
+  try {
+    const { userId } = auth();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const chatId = parseInt(params.chatId);
+
+    const [chat] = await db.select().from(chats).where(eq(chats.id, chatId));
+
+    if (!chat) {
+      return NextResponse.json({ error: "Chat not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      status: 200,
+      data: chat,
+    });
+  } catch (error) {
+    console.error("Error fetching chat:", error);
+    return NextResponse.json({ error: "Failed fetch chat" }, { status: 500 });
+  }
+}
+
 export async function PATCH(
   req: Request,
   { params }: { params: { chatId: string } }
@@ -64,4 +92,4 @@ export async function DELETE(
       { status: 500 }
     );
   }
-} 
+}

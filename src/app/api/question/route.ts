@@ -19,13 +19,25 @@ export async function POST(req: Request) {
       chatId,
       userId as string
     );
-    const prompt = `For question: ${questionQuery}, answer the question based on the following context: ${results
+    const prompt = `For question: ${questionQuery}, please provide a concise answer based on this context: ${results
       .map((result) => result.text)
-      .join("\n")}`;
+      .join(
+        "\n"
+      )}. Format your response in HTML using <p> tags for paragraphs and <strong> tags for emphasis. Keep formatting minimal and avoid unnecessary line breaks.`;
     const result = await chatSession.sendMessage(prompt);
+    const response = result.response.text();
+
+    // Clean up the response
+    const cleanResponse = response
+      .trim()
+      .replace(/\n+/g, "\n")
+      .replace(/\s+/g, " ")
+      .replace(/<p>\s+/g, "<p>")
+      .replace(/\s+<\/p>/g, "</p>");
+
     return NextResponse.json({
       status: "success",
-      data: result.response.text(),
+      data: cleanResponse,
     });
   } catch (error) {
     console.error("Error in question endpoint:", error);

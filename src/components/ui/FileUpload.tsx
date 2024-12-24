@@ -8,6 +8,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { useRouter, useParams } from "next/navigation";
 import { TbCloudUpload } from "react-icons/tb";
+import { Button } from "./button";
 
 interface CreateChatProps {
   file_key: string;
@@ -94,29 +95,28 @@ const FileUpload = () => {
   });
 
   return (
-    <div className="p-2 text-xl glassmorphism h-[180px] text-center flex items-center justify-center">
-      <div
-        {...getRootProps({
-          className: "border-1 border-slate-500 p-2",
-        })}
-      >
-        <input
-          type="text"
-          {...getInputProps()}
-          placeholder="drop your file here.."
-          className="placeholder:text-black"
-        />
-        {isDragActive ? (
-          <p className="text-sm text-slate-700">Drop file here...</p>
-        ) : (
-          <p className="flex flex-col items-center justify-center text-5xl text-slate-700">
-            <TbCloudUpload />
-            <span className="text-sm">
-              Drag 'n' drop some files here, or click to select files
-            </span>
-          </p>
-        )}
-      </div>
+    <div
+      {...getRootProps({
+        className: "border-1 border-slate-500",
+      })}
+    >
+      <input
+        type="text"
+        {...getInputProps()}
+        placeholder="drop your file here.."
+        className="placeholder:text-black"
+      />
+      {isDragActive ? (
+        <Button className="flex w-full items-center justify-center ">
+          <TbCloudUpload />
+          <span className="text-sm">Drop file here...</span>
+        </Button>
+      ) : (
+        <Button className="flex w-full items-center justify-center">
+          <TbCloudUpload />
+          <span className="text-sm">Upload</span>
+        </Button>
+      )}
     </div>
   );
 };

@@ -41,11 +41,31 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
+import { Node } from "@tiptap/core";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Loader2 } from "lucide-react";
 
 interface TextEditorProps {
   editorContent: string;
   onChange: (content: string) => void;
 }
+
+// Add this type for dictionary response
+type DictionaryResponse = {
+  word: string;
+  phonetic: string;
+  meanings: {
+    partOfSpeech: string;
+    definitions: {
+      definition: string;
+      example?: string;
+    }[];
+  }[];
+};
 
 const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
   const { chatId } = useParams();
@@ -86,10 +106,28 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
     [chatId, saveContent]
   );
 
+  // Add state for word definition
+  const [selectedWord, setSelectedWord] = useState("");
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const [popoverPosition, setPopoverPosition] = useState({ top: 0, left: 0 });
+
+  // Add query for word definition
+  const wordExplanationMutation = useMutation({
+    mutationFn: async (word: string) => {
+      const response = await axios.post("/api/explain", { word });
+      return response.data;
+    },
+  });
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
         heading: false,
+        paragraph: {
+          HTMLAttributes: {
+            class: "mb-4",
+          },
+        },
       }),
       ListItem,
       Heading.configure({
@@ -121,21 +159,36 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
         class:
           "prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none min-h-screen p-4 cursor-text",
       },
-      handleClick: (view, pos, event) => {
-        // Set cursor position on click
-        const { state, dispatch } = view;
-        const tr = state.tr;
-        tr.setSelection(TextSelection.create(state.doc, pos));
-        dispatch(tr);
-        return true;
+      handleDOMEvents: {
+        mouseup: (view, event) => {
+          const selection = window.getSelection();
+          if (selection && selection.toString().trim()) {
+            const word = selection.toString().trim();
+            if (word.length < 50) {
+              setSelectedWord(word);
+              wordExplanationMutation.mutate(word);
+
+              const range = selection.getRangeAt(0);
+              const rect = range.getBoundingClientRect();
+
+              // Adjust position to be below the selection
+              setPopoverPosition({
+                top: rect.bottom + window.scrollY + 10, // Add some offset
+                left: rect.left + window.scrollX,
+              });
+              setIsPopoverOpen(true);
+            }
+          }
+          return false;
+        },
       },
     },
+    content: savedContent || "",
     onUpdate: ({ editor }) => {
       const content = editor.getHTML();
       onChange(content);
       debouncedSave(content);
     },
-    content: savedContent || "",
   });
 
   useEffect(() => {
@@ -157,56 +210,38 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
           questionQuery: selectedText,
           chatId,
         });
-        console.log(response.data);
-        return response.data;
+        return {
+          data: response.data.data,
+          question: selectedText,
+        };
       } catch (err: any) {
         throw new Error(err);
       }
     },
     onMutate: () => {
+      // Add loading toast when mutation starts
       toast.loading("Getting AI suggestions...", { id: "ai-suggestion" });
     },
     onSuccess: (data) => {
-      toast.success("AI suggestion fetched successfully", {
-        id: "ai-suggestion",
-      });
+      if (editor) {
+        const { data: htmlContent, question } = data;
 
-      // Insert AI response after selected text
-      const selection = editor?.state.selection;
-      const from = selection?.from;
-      const to = selection?.to;
+        const formattedContent = `
+<div class="ai-qa-block">
+  <div class="ai-question"><strong>Q:</strong> ${question}</div>
+  <div class="ai-response">${htmlContent
+    .replace("```html", "")
+    .replace("```", "")}</div>
+</div>`;
 
-      if (editor && from !== undefined && to !== undefined) {
-        const text = data.data;
-        const parts = text.split(/(\*\*.*?\*\*)/g);
+        editor.chain().focus().insertContent(formattedContent.trim()).run();
 
-        const content = parts.map((part) => {
-          if (part.startsWith("**") && part.endsWith("**")) {
-            return {
-              type: "text",
-              marks: [{ type: "bold" }],
-              text: part.slice(2, -2),
-            };
-          }
-          return {
-            type: "text",
-            text: part,
-          };
-        });
-
-        editor
-          .chain()
-          .focus()
-          .insertContentAt(to, [
-            {
-              type: "paragraph",
-              content,
-            },
-          ])
-          .run();
+        // Update the loading toast to success
+        toast.success("AI suggestion added", { id: "ai-suggestion" });
       }
     },
     onError: () => {
+      // Update the loading toast to error
       toast.error("Failed to get AI suggestions", { id: "ai-suggestion" });
     },
   });
@@ -256,11 +291,65 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
       .then(() => {
         toast.success("PDF exported successfully", { id: "pdf-export" });
       })
-      .catch((error) => {
+      .catch((error: any) => {
         console.error("PDF export error:", error);
         toast.error("Failed to export PDF", { id: "pdf-export" });
       });
   };
+
+  // Update the editor styles for more compact formatting
+  const editorStyles = `
+    .ai-qa-block {
+      margin: 1em 0;
+      border: 1px solid #e2e8f0;
+      border-radius: 0.5rem;
+      overflow: hidden;
+    }
+
+    .ai-question {
+      padding: 0.75em;
+      background-color: #f8fafc;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 0.95em;
+    }
+
+    .ai-response {
+      padding: 1em;
+      background-color: #ffffff;
+    }
+
+    .ai-response p {
+      margin: 0.5em 0;
+    }
+
+    .ai-response p:first-child {
+      margin-top: 0;
+    }
+
+    .ai-response p:last-child {
+      margin-bottom: 0;
+    }
+
+    .ai-response ul, .ai-response ol {
+      margin: 0 0;
+      padding-left: 1.5em;
+    }
+
+    .ai-response li {
+      margin: 0 0;
+    }
+  `;
+
+  // Add the styles to the document
+  useEffect(() => {
+    const styleElement = document.createElement("style");
+    styleElement.innerHTML = editorStyles;
+    document.head.appendChild(styleElement);
+
+    return () => {
+      document.head.removeChild(styleElement);
+    };
+  }, []);
 
   if (!editor) {
     return null;
@@ -507,6 +596,37 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+        <PopoverContent
+          className="w-80"
+          style={{
+            position: "fixed",
+            top: `${popoverPosition.top}px`,
+            left: `${popoverPosition.left}px`,
+            zIndex: 50,
+          }}
+          sideOffset={5}
+        >
+          {wordExplanationMutation.isPending ? (
+            <div className="flex items-center justify-center p-4">
+              <Loader2 className="h-4 w-4 animate-spin" />
+            </div>
+          ) : wordExplanationMutation.data?.data ? (
+            <div
+              className="prose prose-sm max-w-none"
+              dangerouslySetInnerHTML={{
+                __html: wordExplanationMutation.data.data
+                  .replace("```html", "")
+                  .replace("```", ""),
+              }}
+            />
+          ) : (
+            <p className="text-sm text-muted-foreground p-2">
+              Select a word to see its explanation
+            </p>
+          )}
+        </PopoverContent>
+      </Popover>
     </TooltipProvider>
   );
 };

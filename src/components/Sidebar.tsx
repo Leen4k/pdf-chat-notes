@@ -37,6 +37,8 @@ import toast from "react-hot-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { TbEdit } from "react-icons/tb";
+import { useChatName } from "@/hooks/useChatName";
+import { IoIosArrowBack } from "react-icons/io";
 
 // Type definition remains the same
 type DocumentChat = {
@@ -138,6 +140,18 @@ export function AppSidebar() {
     isOpen: false,
     fileId: null,
     currentName: "",
+  });
+
+  const [isEditingChatName, setIsEditingChatName] = useState(false);
+  const [editedChatName, setEditedChatName] = useState("");
+
+  const { data: chatData } = useQuery({
+    queryKey: ["chat", chatId],
+    queryFn: async () => {
+      const response = await axios.get(`/api/chat/${chatId}`);
+      return response.data.data;
+    },
+    enabled: !!chatId,
   });
 
   // Soft delete mutation
@@ -275,6 +289,7 @@ export function AppSidebar() {
       const { data } = await axios.get(`/api/file/trash?chatId=${chatId}`);
       return data.data;
     },
+    refetchInterval: 5000,
   });
 
   // Mutation for toggling file selection
@@ -411,18 +426,85 @@ export function AppSidebar() {
     },
   });
 
+  // Add chat name update mutation
+  const updateChatNameMutation = useMutation({
+    mutationFn: async (name: string) => {
+      const response = await axios.patch(`/api/chat/${chatId}`, { name });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["chat", chatId] });
+      setIsEditingChatName(false);
+      toast.success("Chat name updated");
+    },
+    onError: () => {
+      toast.error("Failed to update chat name");
+    },
+  });
+
   return (
     <>
       <Sidebar>
         <SidebarContent>
           <SidebarGroup>
+            {/* <SidebarGroupLabel>Navigation</SidebarGroupLabel> */}
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <Link
+                      href="/"
+                      className="flex items-center gap-2 font-bold"
+                    >
+                      <IoIosArrowBack />
+                      <span>Go Back</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+
+          <SidebarGroup>
             <SidebarGroupLabel>
-              <Link href={"/"}>My Chats</Link>
+              <div className="flex items-center gap-2">
+                {isEditingChatName ? (
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      updateChatNameMutation.mutate(editedChatName);
+                    }}
+                    className="flex-1"
+                  >
+                    <Input
+                      value={editedChatName}
+                      onChange={(e) => setEditedChatName(e.target.value)}
+                      onBlur={() => {
+                        if (editedChatName.trim()) {
+                          updateChatNameMutation.mutate(editedChatName);
+                        }
+                        setIsEditingChatName(false);
+                      }}
+                      autoFocus
+                      className="h-6 text-sm"
+                    />
+                  </form>
+                ) : (
+                  <span
+                    className="cursor-pointer hover:text-primary font-bold"
+                    onClick={() => {
+                      setEditedChatName(chatData?.name || "");
+                      setIsEditingChatName(true);
+                    }}
+                  >
+                    {chatData?.name || "My Chats"}
+                  </span>
+                )}
+              </div>
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {/* File Upload Component */}
-                <FileUpload />
 
                 {/* Document chat items */}
                 {isChatsLoading ? (
@@ -430,6 +512,12 @@ export function AppSidebar() {
                     <ChatSkeleton />
                     <ChatSkeleton />
                     <ChatSkeleton />
+                  </>
+                ) : documentChats?.length === 0 ? (
+                  <>
+                    <div className="flex items-center m-auto text-center py-4 h-[180px] text-muted-foreground">
+                      No PDF files uploaded yet
+                    </div>
                   </>
                 ) : (
                   <>
@@ -497,6 +585,9 @@ export function AppSidebar() {
                   </>
                 )}
               </SidebarMenu>
+              <div className="mt-2">
+                <FileUpload />
+              </div>
             </SidebarGroupContent>
           </SidebarGroup>
           <SidebarGroup>
@@ -511,6 +602,10 @@ export function AppSidebar() {
                     <TrashSkeleton />
                     <TrashSkeleton />
                   </>
+                ) : trashItems?.length === 0 ? (
+                  <div className="text-center py-4 text-muted-foreground">
+                    Trash is empty
+                  </div>
                 ) : (
                   trashItems?.map((item: TrashItem) => (
                     <SidebarMenuItem key={item.id}>
