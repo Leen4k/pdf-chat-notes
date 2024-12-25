@@ -39,6 +39,7 @@ import { Input } from "@/components/ui/input";
 import { TbEdit } from "react-icons/tb";
 import { useChatName } from "@/hooks/useChatName";
 import { IoIosArrowBack } from "react-icons/io";
+import { GradientThemeSelector } from "./GradientThemeSelector";
 
 // Type definition remains the same
 type DocumentChat = {
@@ -428,7 +429,7 @@ export function AppSidebar() {
 
   // Add chat name update mutation
   const updateChatNameMutation = useMutation({
-    mutationFn: async (name: string) => {
+    mutationFn: async ({ chatId, name }: { chatId: string; name: string }) => {
       const response = await axios.patch(`/api/chat/${chatId}`, { name });
       return response.data;
     },
@@ -467,38 +468,45 @@ export function AppSidebar() {
 
           <SidebarGroup>
             <SidebarGroupLabel>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between">
                 {isEditingChatName ? (
                   <form
                     onSubmit={(e) => {
                       e.preventDefault();
-                      updateChatNameMutation.mutate(editedChatName);
+                      if (editedChatName.trim() && chatId) {
+                        updateChatNameMutation.mutate({
+                          chatId: chatId as string,
+                          name: editedChatName,
+                        });
+                      }
                     }}
                     className="flex-1"
                   >
                     <Input
                       value={editedChatName}
                       onChange={(e) => setEditedChatName(e.target.value)}
-                      onBlur={() => {
-                        if (editedChatName.trim()) {
-                          updateChatNameMutation.mutate(editedChatName);
-                        }
-                        setIsEditingChatName(false);
-                      }}
+                      onBlur={() => setIsEditingChatName(false)}
                       autoFocus
-                      className="h-6 text-sm"
+                      className="h-7"
                     />
                   </form>
                 ) : (
                   <span
-                    className="cursor-pointer hover:text-primary font-bold"
+                    className="cursor-pointer hover:text-primary flex items-center gap-2"
                     onClick={() => {
                       setEditedChatName(chatData?.name || "");
                       setIsEditingChatName(true);
                     }}
                   >
                     {chatData?.name || "My Chats"}
+                    {/* <TbEdit className="h-4 w-4" /> */}
                   </span>
+                )}
+                {chatId && (
+                  <GradientThemeSelector
+                    chatId={chatId as string}
+                    currentGradientId={chatData?.gradientId}
+                  />
                 )}
               </div>
             </SidebarGroupLabel>

@@ -299,45 +299,7 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
 
   // Update the editor styles for more compact formatting
   const editorStyles = `
-    .ai-qa-block {
-      margin: 1em 0;
-      border: 1px solid #e2e8f0;
-      border-radius: 0.5rem;
-      overflow: hidden;
-    }
-
-    .ai-question {
-      padding: 0.75em;
-      background-color: #f8fafc;
-      border-bottom: 1px solid #e2e8f0;
-      font-size: 0.95em;
-    }
-
-    .ai-response {
-      padding: 1em;
-      background-color: #ffffff;
-    }
-
-    .ai-response p {
-      margin: 0.5em 0;
-    }
-
-    .ai-response p:first-child {
-      margin-top: 0;
-    }
-
-    .ai-response p:last-child {
-      margin-bottom: 0;
-    }
-
-    .ai-response ul, .ai-response ol {
-      margin: 0 0;
-      padding-left: 1.5em;
-    }
-
-    .ai-response li {
-      margin: 0 0;
-    }
+   
   `;
 
   // Add the styles to the document

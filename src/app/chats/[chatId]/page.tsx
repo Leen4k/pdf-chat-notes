@@ -29,14 +29,14 @@ const PDFViewer = () => {
   };
 
   return (
-    <div className="flex">
+    <div className="grid grid-cols-2">
       {/* Text Editor Column */}
-      <div className="w-1/2 p-4 overflow-y-auto h-screen">
+      <div className="w-full p-4 overflow-y-auto rounded-lg h-screen flex-1">
         <TextEditor editorContent={text} onChange={setText} />
       </div>
 
       {/* PDF Viewer Column */}
-      <div className="w-1/2 p-4 overflow-y-auto h-screen">
+      <div className="w-full p-4 overflow-y-auto h-screen">
         {error && <div className="text-red-500 p-4">{error}</div>}
 
         <Document
