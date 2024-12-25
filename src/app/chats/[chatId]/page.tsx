@@ -6,6 +6,7 @@ import "react-pdf/dist/esm/Page/TextLayer.css";
 import "react-pdf/dist/esm/Page/AnnotationLayer.css";
 import { Skeleton } from "@/components/ui/skeleton";
 import TextEditor from "@/components/TextEditor";
+import { motion, AnimatePresence } from "framer-motion";
 
 // Ensure PDF.js worker is loaded
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/legacy/build/pdf.worker.min.mjs`;
@@ -39,34 +40,44 @@ const PDFViewer = () => {
       <div className="w-full p-4 overflow-y-auto h-screen">
         {error && <div className="text-red-500 p-4">{error}</div>}
 
-        <Document
-          file={(pdfUrl as string) || ""}
-          onLoadSuccess={handleLoadSuccess}
-          onLoadError={handleLoadError}
-          loading={
-            <div className="space-y-4">
-              <Skeleton className="h-[842px] w-[595px] mx-auto" />{" "}
-              {/* A4 dimensions in pixels */}
-              <Skeleton className="h-[842px] w-[595px] mx-auto" />
-            </div>
-          }
-          className="space-y-4"
-        >
-          {numPages && (
-            <>
-              {[...Array(numPages)].map((_, index) => (
-                <Page
-                  key={`page_${index + 1}`}
-                  pageNumber={index + 1}
-                  renderTextLayer={true}
-                  renderAnnotationLayer={true}
-                  className="shadow-md mb-4 mx-auto"
-                  width={595} // A4 width in pixels
-                />
-              ))}
-            </>
-          )}
-        </Document>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={pdfUrl}
+            initial={{ x: 50 }}
+            animate={{ x: 0 }}
+            exit={{ x: -50 }}
+            transition={{ duration: 0.2 }}
+          >
+            <Document
+              file={(pdfUrl as string) || ""}
+              onLoadSuccess={handleLoadSuccess}
+              onLoadError={handleLoadError}
+              loading={
+                <div className="space-y-4">
+                  <Skeleton className="h-[842px] w-[595px] mx-auto" />{" "}
+                  {/* A4 dimensions in pixels */}
+                  <Skeleton className="h-[842px] w-[595px] mx-auto" />
+                </div>
+              }
+              className="space-y-4"
+            >
+              {numPages && (
+                <>
+                  {[...Array(numPages)].map((_, index) => (
+                    <Page
+                      key={`page_${index + 1}`}
+                      pageNumber={index + 1}
+                      renderTextLayer={true}
+                      renderAnnotationLayer={true}
+                      className="shadow-md mb-4 mx-auto"
+                      width={595} // A4 width in pixels
+                    />
+                  ))}
+                </>
+              )}
+            </Document>
+          </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   );
