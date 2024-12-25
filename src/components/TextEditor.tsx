@@ -386,7 +386,7 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
     <button
       type="button"
       onClick={onClick}
-      className={`p-2 rounded hover:bg-gray-100 transition-colors ${
+      className={`p-2 rounded hover:bg-gray-100 hover:text-black transition-colors ${
         isActive ? "bg-gray-200 text-primary" : ""
       }`}
       title={title}
