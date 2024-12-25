@@ -29,7 +29,7 @@ const PDFViewer = () => {
   };
 
   return (
-    <div className="grid grid-cols-2">
+    <div className="grid xl:grid-cols-2">
       {/* Text Editor Column */}
       <div className="w-full p-4 overflow-y-auto rounded-lg h-screen flex-1">
         <TextEditor editorContent={text} onChange={setText} />

@@ -29,7 +29,7 @@ import debounce from "lodash/debounce";
 import html2pdf from "html2pdf.js";
 import { pdfStyles } from "./PdfStyles";
 import { TbFileDownload } from "react-icons/tb";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -110,6 +110,8 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
   const [selectedWord, setSelectedWord] = useState("");
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [popoverPosition, setPopoverPosition] = useState({ top: 0, left: 0 });
+  const [initialPosition, setInitialPosition] = useState({ top: 0, left: 0 });
+  const [selectedRange, setSelectedRange] = useState<Range | null>(null);
 
   // Add query for word definition
   const wordExplanationMutation = useMutation({
@@ -119,31 +121,84 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
     },
   });
 
+  const updatePopoverPosition = useCallback(() => {
+    if (selectedRange) {
+      const rect = selectedRange.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const popoverHeight = 200; // Approximate height of popover
+      const margin = 10; // Margin from edges
+
+      // Calculate position relative to viewport
+      let top = rect.bottom + margin;
+      let left = rect.left;
+
+      // If popover would go below viewport
+      if (top + popoverHeight > viewportHeight) {
+        top = rect.top - popoverHeight - margin;
+      }
+
+      // If popover would go off right edge
+      if (left + 320 > window.innerWidth) { // 320px is w-80
+        left = window.innerWidth - 320 - margin;
+      }
+
+      // Ensure minimum margins
+      top = Math.max(margin, top);
+      left = Math.max(margin, left);
+
+      setPopoverPosition({
+        top: top + window.scrollY, // Add scroll position
+        left: left,
+      });
+    }
+  }, [selectedRange]);
+
+  // Add scroll and resize listeners
+  useEffect(() => {
+    if (isPopoverOpen) {
+      const handleScroll = () => {
+        updatePopoverPosition();
+      };
+
+      const handleResize = () => {
+        updatePopoverPosition();
+      };
+
+      window.addEventListener("scroll", handleScroll, true);
+      window.addEventListener("resize", handleResize);
+
+      return () => {
+        window.removeEventListener("scroll", handleScroll, true);
+        window.removeEventListener("resize", handleResize);
+      };
+    }
+  }, [isPopoverOpen, updatePopoverPosition]);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
         heading: false,
         paragraph: {
           HTMLAttributes: {
-            class: "mb-4",
+            class: "",
           },
         },
       }),
       ListItem,
       Heading.configure({
         HTMLAttributes: {
-          class: "text-2xl font-bold my-4",
+          class: "text-2xl font-bold",
         },
         levels: [1, 2, 3],
       }),
       BulletList.configure({
         HTMLAttributes: {
-          class: "list-disc ml-4 my-2",
+          class: "list-disc ml-4",
         },
       }),
       OrderedList.configure({
         HTMLAttributes: {
-          class: "list-decimal ml-4 my-2",
+          class: "list-decimal ml-4",
         },
       }),
       TextAlign.configure({
@@ -169,13 +224,8 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
               wordExplanationMutation.mutate(word);
 
               const range = selection.getRangeAt(0);
-              const rect = range.getBoundingClientRect();
-
-              // Adjust position to be below the selection
-              setPopoverPosition({
-                top: rect.bottom + window.scrollY + 10, // Add some offset
-                left: rect.left + window.scrollX,
-              });
+              setSelectedRange(range);
+              updatePopoverPosition();
               setIsPopoverOpen(true);
             }
           }
@@ -257,7 +307,7 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
     const tempDiv = document.createElement("div");
     tempDiv.innerHTML = `
       <style>${pdfStyles}</style>
-      <div class="prose max-w-none mx-4 my-4">
+      <div class="prose max-w-none mx-4">
         ${editor.getHTML()}
       </div>
     `;
@@ -563,11 +613,11 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
           className="w-80"
           style={{
             position: "fixed",
-            top: `${popoverPosition.top}px`,
-            left: `${popoverPosition.left}px`,
+            ...popoverPosition,
             zIndex: 50,
+            maxHeight: "300px",
+            overflowY: "auto",
           }}
-          sideOffset={5}
         >
           {wordExplanationMutation.isPending ? (
             <div className="flex items-center justify-center p-4">
