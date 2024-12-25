@@ -2,10 +2,10 @@
 import { useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import { useParams, useSearchParams } from "next/navigation";
-import TextEditor from "@/components/TextEditor";
 import "react-pdf/dist/esm/Page/TextLayer.css";
 import "react-pdf/dist/esm/Page/AnnotationLayer.css";
 import { Skeleton } from "@/components/ui/skeleton";
+import TextEditor from "@/components/TextEditor";
 
 // Ensure PDF.js worker is loaded
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/legacy/build/pdf.worker.min.mjs`;

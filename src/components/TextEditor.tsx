@@ -138,7 +138,8 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
       }
 
       // If popover would go off right edge
-      if (left + 320 > window.innerWidth) { // 320px is w-80
+      if (left + 320 > window.innerWidth) {
+        // 320px is w-80
         left = window.innerWidth - 320 - margin;
       }
 
@@ -396,8 +397,8 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
 
   return (
     <TooltipProvider>
-      <div className="w-full border rounded-lg shadow-sm bg-white">
-        <div className="flex items-center gap-1 p-2 border-b bg-gray-50 flex-wrap">
+      <div className="w-full border rounded-lg shadow-sm bg-card">
+        <div className="flex items-center gap-1 p-2 border-b bg-card flex-wrap">
           <MenuButton
             onClick={() => editor.chain().focus().toggleBold().run()}
             isActive={editor.isActive("bold")}

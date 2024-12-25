@@ -113,7 +113,11 @@ export function ChatCard({ chat, onEditClick, onDeleteClick }: ChatCardProps) {
           >
             <span
               className={`${
-                chat.gradientId ? "text-white" : "text-gray-600"
+                chat.gradientId
+                  ? chat.gradientId !== 1 && chat.gradientId !== 2
+                    ? "text-white"
+                    : "dark:text-black"
+                  : "text-gray-600"
               } font-medium`}
             >
               {chat.name.slice(0, 2).toUpperCase()}
