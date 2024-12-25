@@ -116,7 +116,7 @@ export function ChatCard({ chat, onEditClick, onDeleteClick }: ChatCardProps) {
                 chat.gradientId
                   ? chat.gradientId !== 1 && chat.gradientId !== 2
                     ? "text-white"
-                    : "dark:text-black"
+                    : "text-black dark:text-white"
                   : "text-gray-600"
               } font-medium`}
             >

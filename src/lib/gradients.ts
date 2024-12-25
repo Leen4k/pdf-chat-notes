@@ -2,12 +2,12 @@ export const gradientThemes = [
   {
     id: 1,
     name: "None",
-    gradient: "bg-transparent",
+    gradient: "bg-sidebar",
   },
   {
     id: 2,
     name: "Plain White",
-    gradient: "bg-white",
+    gradient: "bg-slate-100",
   },
   {
     id: 3,
