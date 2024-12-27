@@ -88,7 +88,7 @@ export async function DELETE(
   } catch (error) {
     console.error("Error deleting chat:", error);
     return NextResponse.json(
-      { error: "Failed to delete chat" },
+      { error: "Failed to delete chatSSSS" },
       { status: 500 }
     );
   }

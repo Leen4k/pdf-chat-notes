@@ -29,12 +29,34 @@ async function loadPDF(url: string | URL | Request) {
 
 export async function POST(req: Request, res: Response) {
   try {
-    const { file_key, file_name, file_url, chatId } = await req.json();
+    const body = await req.json();
     const { userId } = auth();
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    // If it's just creating a chat (no PDF)
+    if (!body.file_key && !body.file_url) {
+      const [newChat] = await db
+        .insert(chats)
+        .values({
+          name: body.name,
+          userId,
+          gradientId: body.gradientId,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+
+      return NextResponse.json({
+        message: "Chat created successfully",
+        data: newChat,
+      });
+    }
+
+    // If it's creating a chat with PDF
+    const { file_key, file_name, file_url, chatId } = body;
 
     // Use the existing loadPDF function to extract text
     const docs = await loadPDF(file_url);
@@ -131,7 +153,7 @@ export async function POST(req: Request, res: Response) {
   } catch (err) {
     console.error(err);
     return NextResponse.json(
-      { error: "Internal server error", status: 500 },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }

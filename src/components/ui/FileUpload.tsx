@@ -53,13 +53,14 @@ const FileUpload = () => {
     onDrop: async (acceptedFile) => {
       const file = acceptedFile[0];
       const fileName = acceptedFile[0].name;
-      const toastId = toast.loading("uploading...");
 
       if (file.size > 10 * 1024 * 1024) {
         // larger than 10mb
         toast.error("please upload a smaller file");
         return;
       }
+
+      const toastId = toast.loading("uploading...");
 
       try {
         const { id, publicUrl, path } = await uploadFile(file, "AI_PDF bucket");

@@ -52,6 +52,7 @@ import {
   sortableKeyboardCoordinates,
   rectSortingStrategy,
 } from "@dnd-kit/sortable";
+import { useRouter } from "next/navigation";
 
 enum DialogTypes {
   EDIT = "edit",
@@ -97,6 +98,7 @@ export default function Home() {
   >();
   const queryClient = useQueryClient();
   const [orderedChats, setOrderedChats] = useState<Chat[]>([]);
+  const router = useRouter();
 
   const { data: chats, isLoading } = useQuery({
     queryKey: ["chats"],
@@ -128,7 +130,7 @@ export default function Home() {
       name: string;
       gradientId?: number;
     }) => {
-      const response = await axios.post("/api/chat/create", {
+      const response = await axios.post("/api/chat", {
         name,
         gradientId,
       });
@@ -183,9 +185,14 @@ export default function Home() {
       setDialogType(null);
       setSelectedChat(null);
       toast.success("Chat deleted successfully");
+      router.push("/");
     },
-    onError: () => {
-      toast.error("Failed to delete chat");
+    onError: (error) => {
+      console.error(error);
+      toast.error(error.response?.data?.message);
+    },
+    onSettled: () => {
+      router.push("/");
     },
   });
 
@@ -210,13 +217,11 @@ export default function Home() {
     },
   });
 
-  const handleCreateChat = () => {
-    if (newChatName.trim()) {
-      createChatMutation.mutate({
-        name: newChatName.trim(),
-        gradientId: newChatGradientId,
-      });
-    }
+  const handleCreateChat = (data: CreateChatInput) => {
+    createChatMutation.mutate({
+      name: data.name,
+      gradientId: data.gradientId,
+    });
   };
 
   const handleDialogChange = (open: boolean) => {
@@ -310,16 +315,8 @@ export default function Home() {
 
         <GradientDialog
           open={isNewChatDialogOpen}
-          onOpenChange={(open) => {
-            setIsNewChatDialogOpen(open);
-            if (!open) {
-              setNewChatName("");
-              setNewChatGradientId(undefined);
-            }
-          }}
+          onOpenChange={setIsNewChatDialogOpen}
           title="Create New Chat"
-          name={newChatName}
-          onNameChange={setNewChatName}
           gradientId={newChatGradientId}
           onGradientChange={setNewChatGradientId}
           onConfirm={handleCreateChat}

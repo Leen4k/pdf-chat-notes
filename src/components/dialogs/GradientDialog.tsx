@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { gradientThemes } from "@/lib/gradients";
+import { useEffect } from "react";
 
 interface GradientDialogProps {
   open: boolean;
@@ -46,9 +47,13 @@ export function GradientDialog({
     resolver: zodResolver(createChatSchema),
     defaultValues: {
       name: "",
-      gradientId: undefined,
+      gradientId: gradientId,
     },
   });
+
+  useEffect(() => {
+    form.setValue("gradientId", gradientId);
+  }, [gradientId, form]);
 
   const onSubmit = (data: CreateChatInput) => {
     onConfirm(data);
@@ -95,7 +100,7 @@ export function GradientDialog({
                             theme.gradient
                           } h-8 rounded-md transition-all ${
                             gradientId === theme.id
-                              ? "ring-2 ring-offset-2 ring-black"
+                              ? "ring-2 ring-offset-2 ring-black dark:ring-white"
                               : ""
                           }`}
                           onClick={() => {
@@ -110,13 +115,14 @@ export function GradientDialog({
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="pt-6 border-t">
-              <AlertDialogCancel onClick={() => onOpenChange(false)}>
+              <AlertDialogCancel onClick={() => form.reset()}>
                 Cancel
               </AlertDialogCancel>
               <AlertDialogAction
                 type="submit"
-                disabled={!form.formState.isValid}
-                onClick={form.handleSubmit(onSubmit)}
+                disabled={
+                  !form.formState.isValid || form.formState.isSubmitting
+                }
               >
                 {confirmText}
               </AlertDialogAction>

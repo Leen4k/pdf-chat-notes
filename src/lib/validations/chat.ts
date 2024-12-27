@@ -5,12 +5,7 @@ export const createChatSchema = z.object({
     .string()
     .min(1, "Chat name is required")
     .max(50, "Chat name must be less than 50 characters"),
-  gradientId: z
-    .number()
-    .int()
-    .min(1)
-    .max(5)
-    .optional(),
+  gradientId: z.number().optional(),
 });
 
-export type CreateChatInput = z.infer<typeof createChatSchema>; 
+export type CreateChatInput = z.infer<typeof createChatSchema>;

@@ -28,7 +28,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { GrDocumentPdf } from "react-icons/gr";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useParams, useSearchParams, usePathname } from "next/navigation";
+import {
+  useParams,
+  useSearchParams,
+  usePathname,
+  useRouter,
+} from "next/navigation";
 import { useState } from "react";
 import FileUpload from "./ui/FileUpload";
 import { softDeleteFile } from "@/actions/deleteFile";
@@ -154,6 +159,7 @@ export function AppSidebar() {
   const [isEditingChatName, setIsEditingChatName] = useState(false);
   const [editedChatName, setEditedChatName] = useState("");
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const router = useRouter();
 
   const { data: chatData } = useQuery({
     queryKey: ["chat", chatId],
@@ -460,10 +466,13 @@ export function AppSidebar() {
     },
     onSuccess: () => {
       toast.success("Chat deleted successfully");
-      router.push("/"); // Redirect to home after deletion
     },
-    onError: () => {
+    onError: (error) => {
+      console.log("chat deletion error: ", error);
       toast.error("Failed to delete chat");
+    },
+    onSettled: () => {
+      router.push("/");
     },
   });
 
