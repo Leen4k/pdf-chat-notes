@@ -70,7 +70,7 @@ export function ChatCard({ chat, onEditClick, onDeleteClick }: ChatCardProps) {
               : "Unknown date"}
           </CardDescription>
         </div>
-        <AlertDialog>
+        {/* <AlertDialog>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -100,7 +100,7 @@ export function ChatCard({ chat, onEditClick, onDeleteClick }: ChatCardProps) {
               </AlertDialogTrigger>
             </DropdownMenuContent>
           </DropdownMenu>
-        </AlertDialog>
+        </AlertDialog> */}
       </CardHeader>
       <Link href={`/chats/${chat.id}`}>
         <CardContent>

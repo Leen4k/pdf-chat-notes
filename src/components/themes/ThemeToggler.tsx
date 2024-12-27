@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 
-const ThemeToggleV2 = () => {
+const ThemeToggle = () => {
   const { theme, setTheme } = useTheme();
   const [isOpen, setIsOpen] = React.useState(false);
 
@@ -147,4 +147,4 @@ const ThemeToggleV2 = () => {
   );
 };
 
-export default ThemeToggleV2;
+export default ThemeToggle;

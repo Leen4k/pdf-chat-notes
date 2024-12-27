@@ -18,7 +18,7 @@ export async function POST(req: Request) {
     1. A brief definition
     2. The part of speech (noun, verb, etc.)
     3. A simple example of usage
-    Format the response in HTML with appropriate tags.`;
+    Format the response in HTML using <div> tags for sections and avoid using bullet points or list tags.`;
 
     const result = await chatSession.sendMessage(prompt);
     const response = result.response.text();
@@ -26,10 +26,16 @@ export async function POST(req: Request) {
     // Clean up the response
     const cleanResponse = response
       .trim()
-      .replace(/\n+/g, "\n")
-      .replace(/\s+/g, " ")
-      .replace(/<p>\s+/g, "<p>")
-      .replace(/\s+<\/p>/g, "</p>");
+      // Convert any bullet points to paragraphs
+      .replace(/•\s*(.*?)(?=(?:•|\n|$))/g, '<p>$1</p>')
+      // Remove any remaining bullet characters
+      .replace(/[•◦]/g, '')
+      // Clean up extra spaces and line breaks
+      .replace(/\s+/g, ' ')
+      .replace(/<p>\s+/g, '<p>')
+      .replace(/\s+<\/p>/g, '</p>')
+      // Ensure proper spacing between elements
+      .replace(/<\/p><p>/g, '</p>\n<p>');
 
     return NextResponse.json({
       status: "success",

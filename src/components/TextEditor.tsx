@@ -1,4 +1,3 @@
-"use client";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import BulletList from "@tiptap/extension-bullet-list";
@@ -30,7 +29,7 @@ import debounce from "lodash/debounce";
 import html2pdf from "html2pdf.js";
 import { pdfStyles } from "./PdfStyles";
 import { TbFileDownload } from "react-icons/tb";
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,6 +48,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Loader2 } from "lucide-react";
+import { useTheme } from "next-themes";
 
 interface TextEditorProps {
   editorContent: string;
@@ -71,6 +71,7 @@ type DictionaryResponse = {
 const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
   const { chatId } = useParams();
   const queryClient = useQueryClient();
+  const { theme } = useTheme();
 
   const preprocessContent = (content: string) => {
     // Replace Markdown bold formatting with Tiptap bold markup
@@ -365,6 +366,86 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
     };
   }, []);
 
+  const editorContainerRef = useRef<HTMLDivElement>(null);
+  const [scrollY, setScrollY] = useState(0);
+
+  // Single selection coordinates function
+  const getSelectionCoords = useCallback(() => {
+    if (!editor || !editorContainerRef.current)
+      return { top: 0, left: 0, width: 0 };
+
+    const selection = window.getSelection();
+    if (!selection?.rangeCount) return { top: 0, left: 0, width: 0 };
+
+    const range = selection.getRangeAt(0);
+    const rects = range.getClientRects();
+    const editorRect = editorContainerRef.current.getBoundingClientRect();
+
+    // Get the last rect for end of selection
+    const lastRect = rects[rects.length - 1];
+
+    return {
+      top: lastRect.bottom - editorRect.top + window.scrollY,
+      left: lastRect.right - editorRect.left,
+      width: lastRect.width,
+    };
+  }, [editor]);
+
+  // Scroll event listener
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrollY(window.scrollY);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // Add this state for AI button position
+  const [aiButtonPosition, setAiButtonPosition] = useState({
+    top: -60,
+    left: 0,
+  });
+
+  // Update the selection handler to check for actual text selection
+  const updateAIButtonPosition = useCallback(() => {
+    if (!editor) return;
+
+    const selection = window.getSelection();
+    if (!selection?.rangeCount) return;
+
+    const selectedText = editor.state.doc
+      .textBetween(editor.state.selection.from, editor.state.selection.to)
+      .trim();
+
+    // Only update position if there's actual text selected
+    if (selectedText) {
+      const range = selection.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+
+      setAiButtonPosition({
+        top: rect.bottom + window.scrollY + 10,
+        left: rect.left + rect.width / 2,
+      });
+    }
+  }, [editor]);
+
+  // Add effect to update position on selection change
+  useEffect(() => {
+    if (!editor) return;
+
+    const updateOnSelect = () => {
+      if (editor.state.selection.content()) {
+        updateAIButtonPosition();
+      }
+    };
+
+    editor.on("selectionUpdate", updateOnSelect);
+    return () => {
+      editor.off("selectionUpdate", updateOnSelect);
+    };
+  }, [editor, updateAIButtonPosition]);
+
   if (!editor) {
     return null;
   }
@@ -545,37 +626,43 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
         <div className="relative">
           <EditorContent editor={editor} />
           <AnimatePresence>
-            {editor.state.selection && !editor.state.selection.empty && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ duration: 0.2 }}
-                className="absolute top-2 right-2"
-              >
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() =>
-                        handleAISuggestion(
-                          editor.state.doc.textBetween(
-                            editor.state.selection.from,
-                            editor.state.selection.to
-                          )
+            {editor?.state.selection.content() &&
+              editor.state.doc
+                .textBetween(
+                  editor.state.selection.from,
+                  editor.state.selection.to
+                )
+                .trim() && (
+                <motion.div
+                  initial={{ opacity: 0, y: -5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -5 }}
+                  transition={{ duration: 0.1 }}
+                  className="fixed z-50 flex items-center gap-1 rounded-md shadow-lg border"
+                  style={{
+                    top: aiButtonPosition.top,
+                    left: aiButtonPosition.left,
+                    // transform: "translateX(-50%)",
+                  }}
+                >
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="h-6 text-xs"
+                    onClick={() =>
+                      handleAISuggestion(
+                        editor.state.doc.textBetween(
+                          editor.state.selection.from,
+                          editor.state.selection.to
                         )
-                      }
-                    >
-                      <Sparkles className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Get AI suggestions</p>
-                  </TooltipContent>
-                </Tooltip>
-              </motion.div>
-            )}
+                      )
+                    }
+                  >
+                    <Sparkles className="size-full" />
+                    Ask AI
+                  </Button>
+                </motion.div>
+              )}
           </AnimatePresence>
         </div>
       </div>
