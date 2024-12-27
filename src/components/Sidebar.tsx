@@ -28,7 +28,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { GrDocumentPdf } from "react-icons/gr";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams, usePathname } from "next/navigation";
 import { useState } from "react";
 import FileUpload from "./ui/FileUpload";
 import { softDeleteFile } from "@/actions/deleteFile";
@@ -40,6 +40,14 @@ import { TbEdit } from "react-icons/tb";
 import { useChatName } from "@/hooks/useChatName";
 import { IoIosArrowBack } from "react-icons/io";
 import { GradientThemeSelector } from "./GradientThemeSelector";
+import { ConfirmationDialog } from "@/components/dialogs/ConfirmationDialog";
+import { MoreVertical, Trash } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 // Type definition remains the same
 type DocumentChat = {
@@ -145,6 +153,7 @@ export function AppSidebar() {
 
   const [isEditingChatName, setIsEditingChatName] = useState(false);
   const [editedChatName, setEditedChatName] = useState("");
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const { data: chatData } = useQuery({
     queryKey: ["chat", chatId],
@@ -443,6 +452,33 @@ export function AppSidebar() {
     },
   });
 
+  // Add the delete mutation
+  const deleteChatMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await axios.delete(`/api/chat/${id}`);
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success("Chat deleted successfully");
+      router.push("/"); // Redirect to home after deletion
+    },
+    onError: () => {
+      toast.error("Failed to delete chat");
+    },
+  });
+
+  const searchParams = useSearchParams();
+  const currentPdfUrl = searchParams.get("pdfUrl");
+
+  const isActiveFile = (fileUrl: string) => {
+    if (!currentPdfUrl) return false;
+    try {
+      return decodeURIComponent(currentPdfUrl) === decodeURIComponent(fileUrl);
+    } catch {
+      return currentPdfUrl === fileUrl;
+    }
+  };
+
   return (
     <>
       <Sidebar>
@@ -455,9 +491,9 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <Link
                       href="/"
-                      className="flex items-center gap-2 font-bold"
+                      className="flex items-center gap-2 text-sm font-medium px-2 py-1.5"
                     >
-                      <IoIosArrowBack />
+                      <IoIosArrowBack className="h-4 w-4" />
                       <span>Go Back</span>
                     </Link>
                   </SidebarMenuButton>
@@ -467,7 +503,7 @@ export function AppSidebar() {
           </SidebarGroup>
 
           <SidebarGroup>
-            <SidebarGroupLabel>
+            <SidebarGroupLabel className="px-2 py-1">
               <div className="flex items-center justify-between">
                 {isEditingChatName ? (
                   <form
@@ -487,26 +523,54 @@ export function AppSidebar() {
                       onChange={(e) => setEditedChatName(e.target.value)}
                       onBlur={() => setIsEditingChatName(false)}
                       autoFocus
-                      className="h-7"
+                      className="h-8 text-sm"
                     />
                   </form>
                 ) : (
-                  <span
-                    className="cursor-pointer hover:text-primary flex items-center gap-2"
-                    onClick={() => {
-                      setEditedChatName(chatData?.name || "");
-                      setIsEditingChatName(true);
-                    }}
-                  >
-                    {chatData?.name || "My Chats"}
-                    {/* <TbEdit className="h-4 w-4" /> */}
-                  </span>
-                )}
-                {chatId && (
-                  <GradientThemeSelector
-                    chatId={chatId as string}
-                    currentGradientId={chatData?.gradientId}
-                  />
+                  <div className="flex items-center justify-between w-full">
+                    <span
+                      className="cursor-pointer hover:text-primary flex items-center gap-2 text-sm font-bold"
+                      onClick={() => {
+                        setEditedChatName(chatData?.name || "");
+                        setIsEditingChatName(true);
+                      }}
+                    >
+                      {chatData?.name || "My Chats"}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <GradientThemeSelector
+                        chatId={chatId as string}
+                        currentGradientId={chatData?.gradientId}
+                      />
+                      <DropdownMenu modal={false}>
+                        <DropdownMenuTrigger
+                          asChild
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            className="text-red-600"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setIsDeleteDialogOpen(true);
+                            }}
+                          >
+                            <Trash className="mr-2 h-4 w-4" />
+                            Delete Chat
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
                 )}
               </div>
             </SidebarGroupLabel>
@@ -530,15 +594,27 @@ export function AppSidebar() {
                 ) : (
                   <>
                     {documentChats?.map((chat: DocumentChat) => (
-                      <SidebarMenuItem key={chat.id} className="relative group">
+                      <SidebarMenuItem
+                        key={chat.id}
+                        className="relative group px-2 py-1.5"
+                      >
                         <SidebarMenuButton asChild>
                           <Link
-                            className="relative w-full flex items-center group"
-                            href={`/chats/${chat.chatId}?pdfUrl=${chat.pdfUrl}`}
+                            className={`relative w-full flex items-center group gap-3 rounded-md p-2 ${
+                              isActiveFile(chat.pdfUrl)
+                                ? "bg-accent text-accent-foreground"
+                                : "hover:bg-accent/50"
+                            }`}
+                            href={`/chats/${
+                              chat.chatId
+                            }?pdfUrl=${encodeURIComponent(chat.pdfUrl)}`}
                           >
-                            <GrDocumentPdf className="flex-shrink-0" />
-                            <div className="ml-2 flex-grow truncate flex items-center">
-                              <span className="truncate" title={chat.pdfName}>
+                            <GrDocumentPdf className="flex-shrink-0 h-4 w-4" />
+                            <div className="flex-grow truncate flex items-center">
+                              <span
+                                className="truncate text-sm"
+                                title={chat.pdfName}
+                              >
                                 {chat.pdfName}
                               </span>
                               <button
@@ -599,8 +675,8 @@ export function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
           <SidebarGroup>
-            <SidebarGroupLabel>
-              <Link href={"/"}>Trash</Link>
+            <SidebarGroupLabel className="px-2 py-1">
+              <span className="text-sm font-bold">Trash</span>
             </SidebarGroupLabel>
 
             <SidebarGroupContent>
@@ -611,24 +687,26 @@ export function AppSidebar() {
                     <TrashSkeleton />
                   </>
                 ) : trashItems?.length === 0 ? (
-                  <div className="text-center py-4 text-muted-foreground">
+                  <div className="text-center py-4 text-sm text-muted-foreground">
                     Trash is empty
                   </div>
                 ) : (
                   trashItems?.map((item: TrashItem) => (
-                    <SidebarMenuItem key={item.id}>
+                    <SidebarMenuItem key={item.id} className="px-2 py-1.5">
                       <SidebarMenuButton asChild>
-                        <div className="flex items-center">
-                          <GrDocumentPdf className="flex-shrink-0" />
+                        <div className="flex items-center gap-3">
+                          <GrDocumentPdf className="flex-shrink-0 h-4 w-4" />
                           <span
-                            className="flex-grow truncate mx-2"
+                            className="flex-grow truncate text-sm"
                             title={item.fileName}
                           >
                             {item.fileName}
                           </span>
-                          <div className="flex-shrink-0 flex gap-2">
+                          <div className="flex-shrink-0 flex gap-1">
                             <Button
                               variant="ghost"
+                              size="sm"
+                              className="h-8 px-2"
                               onClick={() =>
                                 openDialog({
                                   type: "restore",
@@ -642,11 +720,12 @@ export function AppSidebar() {
                                 })
                               }
                             >
-                              <TbRestore />
+                              <TbRestore className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
-                              size="icon"
+                              size="sm"
+                              className="h-8 px-2"
                               onClick={(e) => {
                                 e.preventDefault();
                                 openDialog({
@@ -740,6 +819,20 @@ export function AppSidebar() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ConfirmationDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        title="Delete Chat"
+        description={`Are you sure you want to delete "${chatData?.name}"? This action cannot be undone.`}
+        onConfirm={() => {
+          if (chatId) {
+            deleteChatMutation.mutate(parseInt(chatId as string));
+          }
+        }}
+        confirmText="Delete"
+        confirmVariant="destructive"
+      />
     </>
   );
 }
