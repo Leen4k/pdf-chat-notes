@@ -3,6 +3,7 @@ import { chats } from "@/lib/db/schema";
 import { auth } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { getCache, setCache, deleteCache } from "@/lib/redis";
 
 export async function GET(
   req: Request,
@@ -15,12 +16,29 @@ export async function GET(
     }
 
     const chatId = parseInt(params.chatId);
+    
+    // Try cache first
+    const cacheKey = `chat:${chatId}`;
+    const cachedChat = await getCache(cacheKey);
+    
+    if (cachedChat) {
+      console.log("✅ Returning cached chat:", chatId);
+      return NextResponse.json({
+        status: 200,
+        data: cachedChat,
+      });
+    }
 
+    console.log("🔍 Fetching chat from database:", chatId);
     const [chat] = await db.select().from(chats).where(eq(chats.id, chatId));
 
     if (!chat) {
       return NextResponse.json({ error: "Chat not found" }, { status: 404 });
     }
+
+    // Cache the result
+    await setCache(cacheKey, chat);
+    console.log("💾 Cached chat:", chatId);
 
     return NextResponse.json({
       status: 200,
@@ -55,6 +73,12 @@ export async function PATCH(
       .where(eq(chats.id, chatId))
       .returning();
 
+    // Invalidate both chat and user's chats list caches
+    const chatCacheKey = `chat:${chatId}`;
+    const userCacheKey = `user:${userId}:chats`;
+    await deleteCache([chatCacheKey, userCacheKey]);
+    console.log("🗑️ Invalidated caches for chat update");
+
     return NextResponse.json({
       message: "Chat updated successfully",
       chat: updatedChat,
@@ -82,13 +106,19 @@ export async function DELETE(
 
     await db.delete(chats).where(eq(chats.id, chatId));
 
+    // Invalidate both chat and user's chats list caches
+    const chatCacheKey = `chat:${chatId}`;
+    const userCacheKey = `user:${userId}:chats`;
+    await deleteCache([chatCacheKey, userCacheKey]);
+    console.log("🗑️ Invalidated caches for chat deletion");
+
     return NextResponse.json({
       message: "Chat deleted successfully",
     });
   } catch (error) {
     console.error("Error deleting chat:", error);
     return NextResponse.json(
-      { error: "Failed to delete chatSSSS" },
+      { error: "Failed to delete chat" },
       { status: 500 }
     );
   }

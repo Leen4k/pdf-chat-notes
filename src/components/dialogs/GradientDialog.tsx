@@ -26,8 +26,8 @@ interface GradientDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
-  name: string;
-  onNameChange: (name: string) => void;
+  name?: string;
+  onNameChange?: (name: string) => void;
   gradientId?: number;
   onGradientChange: (gradientId: number) => void;
   onConfirm: (data: CreateChatInput) => void;

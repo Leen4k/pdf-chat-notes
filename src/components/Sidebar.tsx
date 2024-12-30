@@ -54,6 +54,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import ThemeToggler from "@/components/themes/ThemeToggler";
+import { getCachedChats, setCachedChats } from "@/lib/redis";
+import { useAuth } from "@clerk/nextjs";
 
 // Type definition remains the same
 type DocumentChat = {
@@ -139,6 +141,7 @@ const TrashSkeleton = () => (
 );
 
 export function AppSidebar() {
+  const { userId } = useAuth();
   const { chatId } = useParams();
   const queryClient = useQueryClient();
   const [dialogConfig, setDialogConfig] = useState<DialogConfig>({
@@ -296,7 +299,11 @@ export function AppSidebar() {
   // Fetch document chats
   const { data: documentChats, isLoading: isChatsLoading } = useQuery({
     queryKey: ["documentChats", chatId],
-    queryFn: () => fetchDocumentChats(chatId as string),
+    queryFn: async () => {
+      const { data } = await axios.get(`/api/file?chatId=${chatId}`);
+      return data.pdf;
+    },
+    staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
   });
 
   //Fetch trash items
@@ -489,6 +496,24 @@ export function AppSidebar() {
     }
   };
 
+  const onUploadComplete = (newFile: any) => {
+    // Update the cache with the new file
+    queryClient.setQueryData(
+      ["documentChats", chatId],
+      (oldData: any[] | undefined) => {
+        if (!oldData) return [newFile];
+        return [...oldData, newFile];
+      }
+    );
+    
+    // Also invalidate the query to ensure consistency
+    queryClient.invalidateQueries({
+      queryKey: ["documentChats", chatId],
+    });
+    
+    toast.success("File uploaded successfully");
+  };
+
   return (
     <>
       <Sidebar>
@@ -672,7 +697,7 @@ export function AppSidebar() {
                 )}
               </SidebarMenu>
               <div className="mt-2">
-                <FileUpload />
+                <FileUpload onUploadComplete={onUploadComplete} />
               </div>
             </SidebarGroupContent>
           </SidebarGroup>

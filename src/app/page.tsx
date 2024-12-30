@@ -25,15 +25,6 @@ import {
   useAuth,
   UserButton,
 } from "@clerk/nextjs";
-import { gradientThemes } from "@/lib/gradients";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
 import ThemeToggler from "@/components/themes/ThemeToggler";
 import { GradientDialog } from "@/components/dialogs/GradientDialog";
 import { ConfirmationDialog } from "@/components/dialogs/ConfirmationDialog";
@@ -53,6 +44,7 @@ import {
   rectSortingStrategy,
 } from "@dnd-kit/sortable";
 import { useRouter } from "next/navigation";
+import { CreateChatInput } from "@/lib/validations/chat";
 
 enum DialogTypes {
   EDIT = "edit",
@@ -189,7 +181,7 @@ export default function Home() {
     },
     onError: (error) => {
       console.error(error);
-      toast.error(error.response?.data?.message);
+      // toast.error(error.response?.data?.message);
     },
     onSettled: () => {
       router.push("/");
