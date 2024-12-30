@@ -165,13 +165,14 @@ export function AppSidebar() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const router = useRouter();
 
-  const { data: chatData } = useQuery({
+  const { data: chatData, refetch: refetchChat } = useQuery({
     queryKey: ["chat", chatId],
     queryFn: async () => {
       const response = await axios.get(`/api/chat/${chatId}`);
       return response.data.data;
     },
     enabled: !!chatId,
+    staleTime: 0, // Always fetch fresh data
   });
 
   // Soft delete mutation
@@ -451,18 +452,22 @@ export function AppSidebar() {
   });
 
   // Add chat name update mutation
-  const updateChatNameMutation = useMutation({
-    mutationFn: async ({ chatId, name }: { chatId: string; name: string }) => {
-      const response = await axios.patch(`/api/chat/${chatId}`, { name });
+  const updateChatMutation = useMutation({
+    mutationFn: async ({ id, name, gradientId }: { id: number; name: string; gradientId?: number }) => {
+      const response = await axios.patch(`/api/chat/${id}`, {
+        name,
+        gradientId,
+      });
       return response.data;
     },
     onSuccess: () => {
+      // Invalidate and refetch all related queries
       queryClient.invalidateQueries({ queryKey: ["chat", chatId] });
-      setIsEditingChatName(false);
-      toast.success("Chat name updated");
+      queryClient.invalidateQueries({ queryKey: ["chats"] });
+      toast.success("Chat updated successfully");
     },
     onError: () => {
-      toast.error("Failed to update chat name");
+      toast.error("Failed to update chat");
     },
   });
 
@@ -537,8 +542,8 @@ export function AppSidebar() {
                     onSubmit={(e) => {
                       e.preventDefault();
                       if (editedChatName.trim() && chatId) {
-                        updateChatNameMutation.mutate({
-                          chatId: chatId as string,
+                        updateChatMutation.mutate({
+                          id: parseInt(chatId as string),
                           name: editedChatName,
                         });
                       }

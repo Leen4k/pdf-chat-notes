@@ -35,4 +35,14 @@ export const setCachedChats = async (cacheKey: string, data: any) => {
   }
 };
 
+export const invalidateCache = async (cacheKey: string) => {
+  try {
+    console.log("🗑️ Invalidating cache for:", cacheKey);
+    await redis.del(cacheKey);
+    console.log("✅ Cache invalidated");
+  } catch (error) {
+    console.error("Redis delete error:", error);
+  }
+};
+
 export default redis;

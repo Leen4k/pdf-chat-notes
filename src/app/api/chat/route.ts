@@ -13,7 +13,7 @@ import { db } from "@/lib/db";
 import { auth } from "@clerk/nextjs/server";
 import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai";
 import { revalidatePath } from "next/cache";
-import redis from "@/lib/redis";
+import redis, { invalidateCache } from "@/lib/redis";
 
 async function loadPDF(url: string | URL | Request) {
   //load the pdf file and get only the page content and put into one variable only
@@ -48,6 +48,9 @@ export async function POST(req: Request, res: Response) {
           updatedAt: new Date(),
         })
         .returning();
+
+      // Invalidate the user's chats cache
+      await invalidateCache(`user:${userId}:chats`);
 
       return NextResponse.json({
         message: "Chat created successfully",
@@ -230,6 +233,44 @@ export async function GET(req: Request) {
     console.error("Error fetching chats:", error);
     return NextResponse.json(
       { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(req: Request) {
+  try {
+    const { userId } = auth();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id, name, gradientId } = await req.json();
+
+    const [updatedChat] = await db
+      .update(chats)
+      .set({
+        name,
+        gradientId,
+        updatedAt: new Date(),
+      })
+      .where(eq(chats.id, id))
+      .returning();
+
+    // Invalidate all related caches
+    await Promise.all([
+      invalidateCache(`user:${userId}:chats`),
+      invalidateCache(`chat:${id}`),
+    ]);
+
+    return NextResponse.json({
+      message: "Chat updated successfully",
+      data: updatedChat,
+    });
+  } catch (error) {
+    console.error("Error updating chat:", error);
+    return NextResponse.json(
+      { error: "Failed to update chat" },
       { status: 500 }
     );
   }
