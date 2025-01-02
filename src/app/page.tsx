@@ -45,6 +45,7 @@ import {
 } from "@dnd-kit/sortable";
 import { useRouter } from "next/navigation";
 import { CreateChatInput } from "@/lib/validations/chat";
+import { SearchDialog } from "@/components/SearchDialog";
 
 enum DialogTypes {
   EDIT = "edit",
@@ -249,12 +250,14 @@ export default function Home() {
         <SignedIn>
           <div className="space-y-8">
             <div className="flex justify-between items-center">
-              <Button onClick={() => setIsNewChatDialogOpen(true)}>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                New Chat
-              </Button>
+              <div className="basis-1/2 md:basis-1/4 max-w-xl">
+                <SearchDialog />
+              </div>
               <div className="flex items-center gap-2">
-                {" "}
+                <Button onClick={() => setIsNewChatDialogOpen(true)}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  New Chat
+                </Button>
                 <ThemeToggler />
                 <UserButton afterSignOutUrl="/" />
               </div>

@@ -6,6 +6,7 @@ import {
   FormControl,
   FormField,
   FormItem,
+  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import {
@@ -21,6 +22,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { gradientThemes } from "@/lib/gradients";
 import { useEffect } from "react";
+import { Separator } from "../ui/separator";
 
 interface GradientDialogProps {
   open: boolean;
@@ -69,7 +71,11 @@ export function GradientDialog({
             <AlertDialogHeader>
               <AlertDialogTitle>{title}</AlertDialogTitle>
               <AlertDialogDescription>
+                <Separator className="mb-4" />
                 <div className="space-y-4">
+                  <FormLabel schema={createChatSchema} field="name">
+                    Name
+                  </FormLabel>
                   <FormField
                     control={form.control}
                     name="name"
@@ -81,16 +87,20 @@ export function GradientDialog({
                             className="mt-2"
                             autoFocus
                             {...field}
+                            onChange={(e) => {
+                              field.onChange(e);
+                              form.trigger("name"); // Trigger validation on change
+                            }}
                           />
                         </FormControl>
-                        <FormMessage className="text-xs text-red-500" />
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
                   <div className="pt-2">
-                    <label className="text-sm text-muted-foreground">
+                    <FormLabel schema={createChatSchema} field="gradientId">
                       Choose Theme (optional)
-                    </label>
+                    </FormLabel>
                     <div className="grid grid-cols-5 gap-2 mt-2">
                       {gradientThemes.map((theme) => (
                         <button
