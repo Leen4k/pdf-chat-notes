@@ -6,6 +6,7 @@ import { Search, Loader2 } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import axios from "axios";
 import { useRouter } from "next/navigation";
+import { Badge } from "./ui/badge";
 
 export function SearchDialog() {
   const [open, setOpen] = useState(false);
@@ -41,7 +42,7 @@ export function SearchDialog() {
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
+        <DialogContent className="overflow-y-scroll">
           <DialogHeader>
             <DialogTitle>Search PDF Content</DialogTitle>
           </DialogHeader>
@@ -53,8 +54,8 @@ export function SearchDialog() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 autoFocus
               />
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 disabled={!searchQuery.trim() || searchMutation.isPending}
               >
                 {searchMutation.isPending ? (
@@ -69,7 +70,8 @@ export function SearchDialog() {
               <>
                 {hasResults ? (
                   <p className="text-sm text-muted-foreground">
-                    Found {searchMutation.data.totalMatches} matches in {searchMutation.data.results.length} files
+                    Found {searchMutation.data.totalMatches} matches in{" "}
+                    {searchMutation.data.results.length} files
                   </p>
                 ) : (
                   <div className="text-center py-8">
@@ -95,17 +97,21 @@ export function SearchDialog() {
                     key={result.fileId}
                     className="p-4 border rounded-lg cursor-pointer hover:bg-accent transition-colors"
                     onClick={() => {
-                      router.push(`/chats/${result.chatId}?pdfUrl=${encodeURIComponent(result.fileUrl)}`);
+                      router.push(
+                        `/chats/${result.chatId}?pdfUrl=${encodeURIComponent(
+                          result.fileUrl
+                        )}`
+                      );
                       setOpen(false);
                     }}
                   >
                     <div className="flex items-center justify-between">
                       <h3 className="font-medium">{result.fileName}</h3>
-                      <span className="text-xs text-muted-foreground">
+                      <Badge className="text-xs inline whitespace-nowrap">
                         {result.matches} matches
-                      </span>
+                      </Badge>
                     </div>
-                    <p 
+                    <p
                       className="text-sm text-muted-foreground line-clamp-2 mt-1"
                       dangerouslySetInnerHTML={{ __html: result.content }}
                     />
@@ -118,4 +124,4 @@ export function SearchDialog() {
       </Dialog>
     </>
   );
-} 
+}
