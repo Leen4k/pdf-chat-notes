@@ -16,16 +16,30 @@ import { revalidatePath } from "next/cache";
 import redis, { invalidateCache } from "@/lib/redis";
 
 async function loadPDF(url: string | URL | Request) {
-  //load the pdf file and get only the page content and put into one variable only
-  const response = await fetch(url);
-  const data = await response.blob();
-  const loader = new WebPDFLoader(data);
-  const docs = await loader.load();
-  let pdfTextContent = "";
-  docs.forEach((doc) => {
-    pdfTextContent = pdfTextContent + doc.pageContent;
-  });
-  return pdfTextContent;
+  try {
+    const response = await fetch(url);
+    const data = await response.blob();
+    const loader = new WebPDFLoader(data);
+    const docs = await loader.load();
+
+    // Sanitize and clean the text content
+    let pdfTextContent = "";
+    docs.forEach((doc) => {
+      // Remove null bytes and invalid UTF-8 characters
+      const sanitizedContent = doc.pageContent
+        .replace(/\0/g, "") // Remove null bytes
+        .replace(/[\uFFFD\uFFFE\uFFFF]/g, "") // Remove replacement characters
+        .replace(/[^\x20-\x7E\x0A\x0D]/g, " ") // Keep only printable ASCII and newlines
+        .trim();
+
+      pdfTextContent += sanitizedContent + " ";
+    });
+
+    return pdfTextContent.trim();
+  } catch (error) {
+    console.error("Error loading PDF:", error);
+    throw new Error("Failed to process PDF content");
+  }
 }
 
 export async function POST(req: Request, res: Response) {
@@ -61,100 +75,127 @@ export async function POST(req: Request, res: Response) {
     // If it's creating a chat with PDF
     const { file_key, file_name, file_url, chatId } = body;
 
-    // Use the existing loadPDF function to extract text
-    const docs = await loadPDF(file_url);
+    try {
+      // Use the enhanced loadPDF function
+      const docs = await loadPDF(file_url);
 
-    const splitter = new RecursiveCharacterTextSplitter({
-      chunkSize: 1000,
-      chunkOverlap: 20,
-    });
-    const output = await splitter.createDocuments([docs]);
+      const splitter = new RecursiveCharacterTextSplitter({
+        chunkSize: 1000,
+        chunkOverlap: 20,
+      });
 
-    let splitterList: string[] = output.map((doc) => doc.pageContent);
-    const size = docs.length;
+      // Additional sanitization for chunks
+      const output = await splitter.createDocuments([docs]);
+      let splitterList: string[] = output.map((doc) => {
+        const sanitizedContent = doc.pageContent
+          .replace(/\0/g, "")
+          .replace(/[\uFFFD\uFFFE\uFFFF]/g, "")
+          .replace(/[^\x20-\x7E\x0A\x0D]/g, " ")
+          .trim();
+        return sanitizedContent;
+      });
 
-    let chatRecord;
-    let fileRecord;
+      // Filter out empty chunks
+      splitterList = splitterList.filter((chunk) => chunk.length > 0);
 
-    // Check if chatId is provided (existing chat) or create a new chat
-    if (chatId) {
-      // Verify the chat exists and belongs to the user
-      const existingChat = await db
-        .select()
-        .from(chats)
-        .where(and(eq(chats.id, parseInt(chatId)), eq(chats.userId, userId)))
-        .execute();
-
-      if (existingChat.length === 0) {
-        return NextResponse.json(
-          { error: "Chat not found or unauthorized" },
-          { status: 404 }
-        );
+      if (splitterList.length === 0) {
+        throw new Error("No valid text content found in PDF");
       }
 
-      chatRecord = { id: parseInt(chatId) };
-    } else {
-      // Create a new chat if no chatId is provided
-      const [newChat] = await db
-        .insert(chats)
+      const size = docs.length;
+
+      let chatRecord;
+      let fileRecord;
+
+      // Check if chatId is provided (existing chat) or create a new chat
+      if (chatId) {
+        // Verify the chat exists and belongs to the user
+        const existingChat = await db
+          .select()
+          .from(chats)
+          .where(and(eq(chats.id, parseInt(chatId)), eq(chats.userId, userId)))
+          .execute();
+
+        if (existingChat.length === 0) {
+          return NextResponse.json(
+            { error: "Chat not found or unauthorized" },
+            { status: 404 }
+          );
+        }
+
+        chatRecord = { id: parseInt(chatId) };
+      } else {
+        // Create a new chat if no chatId is provided
+        const [newChat] = await db
+          .insert(chats)
+          .values({
+            name: file_name,
+            userId,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .returning({ id: chats.id });
+
+        chatRecord = newChat;
+      }
+
+      // Create the file record
+      const [newFile] = await db
+        .insert(files)
         .values({
+          chatId: chatRecord.id,
           name: file_name,
-          userId,
+          url: file_url,
+          fileKey: file_key,
+          fileType: "pdf",
+          isSelected: true,
+          size,
           createdAt: new Date(),
           updatedAt: new Date(),
         })
-        .returning({ id: chats.id });
+        .returning({ id: files.id });
 
-      chatRecord = newChat;
-    }
+      fileRecord = newFile;
 
-    // Create the file record
-    const [newFile] = await db
-      .insert(files)
-      .values({
-        chatId: chatRecord.id,
-        name: file_name,
-        url: file_url,
-        fileKey: file_key,
-        fileType: "pdf",
-        isSelected: true,
-        size,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .returning({ id: files.id });
+      const embeddingPromises = splitterList.map(async (chunk) => {
+        const embedding = await embeddings.embedQuery(chunk);
 
-    fileRecord = newFile;
+        const [storedChunk] = await db
+          .insert(fileChunks)
+          .values({
+            fileId: fileRecord.id,
+            content: chunk,
+            embedding,
+            createdAt: new Date(),
+          })
+          .returning({ id: fileChunks.id });
 
-    const embeddingPromises = splitterList.map(async (chunk) => {
-      const embedding = await embeddings.embedQuery(chunk);
+        return storedChunk.id;
+      });
 
-      const [storedChunk] = await db
-        .insert(fileChunks)
-        .values({
+      const storedIds = await Promise.all(embeddingPromises);
+      revalidatePath("/");
+      return NextResponse.json({
+        message: "Embeddings processed successfully!",
+        data: {
+          chatId: chatRecord.id,
           fileId: fileRecord.id,
-          content: chunk,
-          embedding,
-          createdAt: new Date(),
-        })
-        .returning({ id: fileChunks.id });
-
-      return storedChunk.id;
-    });
-
-    const storedIds = await Promise.all(embeddingPromises);
-    revalidatePath("/");
-    return NextResponse.json({
-      message: "Embeddings processed successfully!",
-      data: {
-        chatId: chatRecord.id,
-        fileId: fileRecord.id,
-        storedIds,
-        totalChunks: storedIds.length,
-      },
-    });
+          storedIds,
+          totalChunks: storedIds.length,
+        },
+      });
+    } catch (error) {
+      console.error("PDF processing error:", error);
+      return NextResponse.json(
+        {
+          error:
+            "Failed to process PDF file. The file might be corrupted or contain invalid characters.",
+        },
+        { status: 400 }
+      );
+    }
   } catch (err) {
-    console.error(err);
+    console.error("Error in POST handler:", err);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

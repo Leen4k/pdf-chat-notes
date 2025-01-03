@@ -29,4 +29,4 @@ export const pdfStyles = `
   .prose li {
     margin: 0.3em 0;
   }
-`; 
+`;

@@ -17,7 +17,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Sparkles } from "lucide-react";
+import { Sparkles, MessageCircle, Bold } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Error from "next/error";
@@ -49,6 +49,14 @@ import {
 } from "@/components/ui/popover";
 import { Loader2 } from "lucide-react";
 import { useTheme } from "next-themes";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 
 interface TextEditorProps {
   editorContent: string;
@@ -123,60 +131,90 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
     },
   });
 
+  // Update the word selection handler with immediate position calculation
+  const handleWordSelection = useCallback(
+    (view: any, event: any) => {
+      const selection = window.getSelection();
+      if (selection && selection.toString().trim()) {
+        const word = selection.toString().trim();
+        if (word.length < 50) {
+          setSelectedWord(word);
+          wordExplanationMutation.mutate(word);
+
+          const range = selection.getRangeAt(0);
+          const rect = range.getBoundingClientRect();
+          setSelectedRange(range);
+
+          // Calculate position immediately
+          const viewportHeight = window.innerHeight;
+          const viewportWidth = window.innerWidth;
+          const popoverHeight = 200;
+          const popoverWidth = 320;
+          const margin = 10;
+
+          // Position to the right of the selection by default
+          let left = rect.right + margin;
+          let top = rect.top + window.scrollY;
+
+          // If popover would go off right edge, position to the left of selection
+          if (left + popoverWidth > viewportWidth) {
+            left = rect.left - popoverWidth - margin;
+          }
+
+          // If popover would go off bottom edge, adjust top position
+          if (top + popoverHeight > viewportHeight + window.scrollY) {
+            top = rect.bottom + window.scrollY - popoverHeight;
+          }
+
+          // Ensure minimum margins
+          top = Math.max(margin + window.scrollY, top);
+          left = Math.max(margin, left);
+
+          setPopoverPosition({ top, left });
+          setIsPopoverOpen(true);
+        }
+      }
+      return false;
+    },
+    [wordExplanationMutation]
+  );
+
+  // Keep the updatePopoverPosition function for scroll/resize updates
   const updatePopoverPosition = useCallback(() => {
     if (selectedRange) {
       const rect = selectedRange.getBoundingClientRect();
       const viewportHeight = window.innerHeight;
+      const viewportWidth = window.innerWidth;
       const popoverHeight = 200; // Approximate height of popover
-      const margin = 10; // Margin from edges
+      const popoverWidth = 320; // Width of popover (w-80 = 320px)
+      const margin = 10;
 
-      // Calculate position relative to viewport
-      let top = rect.bottom + margin;
-      let left = rect.left;
+      // Position to the right of the selection by default
+      let left = rect.right + margin;
+      let top = rect.top + window.scrollY;
 
-      // If popover would go below viewport
-      if (top + popoverHeight > viewportHeight) {
-        top = rect.top - popoverHeight - margin;
+      // If popover would go off right edge, position to the left of selection
+      if (left + popoverWidth > viewportWidth) {
+        left = rect.left - popoverWidth - margin;
       }
 
-      // If popover would go off right edge
-      if (left + 320 > window.innerWidth) {
-        // 320px is w-80
-        left = window.innerWidth - 320 - margin;
+      // If popover would go off bottom edge, adjust top position
+      if (top + popoverHeight > viewportHeight + window.scrollY) {
+        top = rect.bottom + window.scrollY - popoverHeight;
       }
 
       // Ensure minimum margins
-      top = Math.max(margin, top);
+      top = Math.max(margin + window.scrollY, top);
       left = Math.max(margin, left);
 
       setPopoverPosition({
-        top: top + window.scrollY, // Add scroll position
-        left: left,
+        top,
+        left,
       });
     }
   }, [selectedRange]);
 
-  // Add scroll and resize listeners
-  useEffect(() => {
-    if (isPopoverOpen) {
-      const handleScroll = () => {
-        updatePopoverPosition();
-      };
-
-      const handleResize = () => {
-        updatePopoverPosition();
-      };
-
-      window.addEventListener("scroll", handleScroll, true);
-      window.addEventListener("resize", handleResize);
-
-      return () => {
-        window.removeEventListener("scroll", handleScroll, true);
-        window.removeEventListener("resize", handleResize);
-      };
-    }
-  }, [isPopoverOpen, updatePopoverPosition]);
-
+  // Update editor props
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -218,22 +256,8 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
           "prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none min-h-screen p-4 cursor-text",
       },
       handleDOMEvents: {
-        mouseup: (view, event) => {
-          const selection = window.getSelection();
-          if (selection && selection.toString().trim()) {
-            const word = selection.toString().trim();
-            if (word.length < 50) {
-              setSelectedWord(word);
-              wordExplanationMutation.mutate(word);
-
-              const range = selection.getRangeAt(0);
-              setSelectedRange(range);
-              updatePopoverPosition();
-              setIsPopoverOpen(true);
-            }
-          }
-          return false;
-        },
+        mouseup: handleWordSelection,
+        touchend: handleWordSelection,
       },
     },
     content: savedContent || "",
@@ -407,7 +431,7 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
     left: 0,
   });
 
-  // Update the selection handler to check for actual text selection
+  // Update the updateAIButtonPosition function
   const updateAIButtonPosition = useCallback(() => {
     if (!editor) return;
 
@@ -422,10 +446,20 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
     if (selectedText) {
       const range = selection.getRangeAt(0);
       const rect = range.getBoundingClientRect();
+      const buttonWidth = 80; // Approximate width of AI button
+      const buttonHeight = 24; // Approximate height of AI button
+      const margin = 8;
+
+      // Position above the selection
+      const left = Math.max(margin, rect.left);
+      const top = Math.max(
+        margin,
+        rect.top + window.scrollY - buttonHeight - margin
+      );
 
       setAiButtonPosition({
-        top: rect.bottom + window.scrollY + 10,
-        left: rect.left + rect.width / 2,
+        top,
+        left,
       });
     }
   }, [editor]);
@@ -445,6 +479,38 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
       editor.off("selectionUpdate", updateOnSelect);
     };
   }, [editor, updateAIButtonPosition]);
+
+  // Add new state for comment dialog
+  const [isCommentDialogOpen, setIsCommentDialogOpen] = useState(false);
+  const [commentText, setCommentText] = useState("");
+  const [selectedContent, setSelectedContent] = useState("");
+
+  // Add comment mutation
+  const commentMutation = useMutation({
+    mutationFn: async ({
+      content,
+      comment,
+    }: {
+      content: string;
+      comment: string;
+    }) => {
+      const response = await axios.post("/api/comment", { content, comment });
+      return response.data;
+    },
+    onSuccess: (data) => {
+      // Insert the response at the current selection
+      if (editor) {
+        const pos = editor.state.selection.from;
+        editor.chain().focus().insertContent(data.response).run();
+      }
+      setIsCommentDialogOpen(false);
+      setCommentText("");
+      toast.success("Comment processed successfully");
+    },
+    onError: () => {
+      toast.error("Failed to process comment");
+    },
+  });
 
   if (!editor) {
     return null;
@@ -480,191 +546,209 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
   return (
     <TooltipProvider>
       <div className="w-full border rounded-lg shadow-sm bg-card">
-        <div className="flex items-center gap-1 p-2 border-b bg-card flex-wrap">
-          <MenuButton
-            onClick={() => editor.chain().focus().toggleBold().run()}
-            isActive={editor.isActive("bold")}
-            title="Bold (Ctrl+B)"
-          >
-            <b>B</b>
-          </MenuButton>
-          <MenuButton
-            onClick={() => editor.chain().focus().toggleItalic().run()}
-            isActive={editor.isActive("italic")}
-            title="Italic (Ctrl+I)"
-          >
-            <i>I</i>
-          </MenuButton>
-          <MenuButton
-            onClick={() => editor.chain().focus().toggleStrike().run()}
-            isActive={editor.isActive("strike")}
-            title="Strikethrough"
-          >
-            <span className="line-through">S</span>
-          </MenuButton>
-          <MenuButton
-            onClick={() => editor.chain().focus().toggleUnderline().run()}
-            isActive={editor.isActive("underline")}
-            title="Underline"
-          >
-            <span className="underline">U</span>
-          </MenuButton>
-          <MenuButton
-            onClick={() => editor.chain().focus().toggleHighlight().run()}
-            isActive={editor.isActive("highlight")}
-            title="Highlight"
-          >
-            <span className="bg-yellow-200">H</span>
-          </MenuButton>
-          <div className="w-px h-6 bg-gray-300 mx-1" />
-          <MenuButton
-            onClick={() =>
-              editor.chain().focus().toggleHeading({ level: 1 }).run()
-            }
-            isActive={editor.isActive("heading", { level: 1 })}
-            title="Heading 1"
-          >
-            <span className="font-bold">H1</span>
-          </MenuButton>
-          <MenuButton
-            onClick={() =>
-              editor.chain().focus().toggleHeading({ level: 2 }).run()
-            }
-            isActive={editor.isActive("heading", { level: 2 })}
-            title="Heading 2"
-          >
-            <span className="font-bold">H2</span>
-          </MenuButton>
-          <MenuButton
-            onClick={() =>
-              editor.chain().focus().toggleHeading({ level: 3 }).run()
-            }
-            isActive={editor.isActive("heading", { level: 3 })}
-            title="Heading 3"
-          >
-            <span className="font-bold">H3</span>
-          </MenuButton>
-          <div className="w-px h-6 bg-gray-300 mx-1" />
-          <MenuButton
-            onClick={() => editor.chain().focus().toggleBulletList().run()}
-            isActive={editor.isActive("bulletList")}
-            title="Bullet List"
-          >
-            <Image
-              src="/bullet-list.svg"
-              alt="Bullet list"
-              width={16}
-              height={16}
-              className="w-5 h-5"
+        <div className="sticky -top-4 z-50 border-b bg-background/95 dark:bg-card backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="flex items-center gap-1 p-2 flex-wrap">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => editor?.chain().focus().toggleBold().run()}
+              data-active={editor?.isActive("bold")}
+              className={editor?.isActive("bold") ? "bg-accent" : ""}
+            >
+              <Bold className="h-4 w-4" />
+            </Button>
+            <MenuButton
+              onClick={() => editor.chain().focus().toggleItalic().run()}
+              isActive={editor.isActive("italic")}
+              title="Italic (Ctrl+I)"
+            >
+              <i>I</i>
+            </MenuButton>
+            <MenuButton
+              onClick={() => editor.chain().focus().toggleStrike().run()}
+              isActive={editor.isActive("strike")}
+              title="Strikethrough"
+            >
+              <span className="line-through">S</span>
+            </MenuButton>
+            <MenuButton
+              onClick={() => editor.chain().focus().toggleUnderline().run()}
+              isActive={editor.isActive("underline")}
+              title="Underline"
+            >
+              <span className="underline">U</span>
+            </MenuButton>
+            <MenuButton
+              onClick={() => editor.chain().focus().toggleHighlight().run()}
+              isActive={editor.isActive("highlight")}
+              title="Highlight"
+            >
+              <span className="bg-yellow-200">H</span>
+            </MenuButton>
+            <div className="w-px h-6 bg-gray-300 mx-1" />
+            <MenuButton
+              onClick={() =>
+                editor.chain().focus().toggleHeading({ level: 1 }).run()
+              }
+              isActive={editor.isActive("heading", { level: 1 })}
+              title="Heading 1"
+            >
+              <span className="font-bold">H1</span>
+            </MenuButton>
+            <MenuButton
+              onClick={() =>
+                editor.chain().focus().toggleHeading({ level: 2 }).run()
+              }
+              isActive={editor.isActive("heading", { level: 2 })}
+              title="Heading 2"
+            >
+              <span className="font-bold">H2</span>
+            </MenuButton>
+            <MenuButton
+              onClick={() =>
+                editor.chain().focus().toggleHeading({ level: 3 }).run()
+              }
+              isActive={editor.isActive("heading", { level: 3 })}
+              title="Heading 3"
+            >
+              <span className="font-bold">H3</span>
+            </MenuButton>
+            <div className="w-px h-6 bg-gray-300 mx-1" />
+            <MenuButton
+              onClick={() => editor.chain().focus().toggleBulletList().run()}
+              isActive={editor.isActive("bulletList")}
+              title="Bullet List"
+            >
+              <Image
+                src="/bullet-list.svg"
+                alt="Bullet list"
+                width={16}
+                height={16}
+                className="w-5 h-5"
+              />
+            </MenuButton>
+            <MenuButton
+              onClick={() => editor.chain().focus().toggleOrderedList().run()}
+              isActive={editor.isActive("orderedList")}
+              title="Ordered List"
+            >
+              <Image
+                src="/numbered-list.svg"
+                alt="Numbered list"
+                width={16}
+                height={16}
+                className="w-5 h-5"
+              />
+            </MenuButton>
+            <div className="w-px h-6 bg-gray-300 mx-1" />
+            <MenuButton
+              onClick={() => editor.chain().focus().setTextAlign("left").run()}
+              isActive={editor.isActive({ textAlign: "left" })}
+              title="Align Left"
+            >
+              ←
+            </MenuButton>
+            <MenuButton
+              onClick={() =>
+                editor.chain().focus().setTextAlign("center").run()
+              }
+              isActive={editor.isActive({ textAlign: "center" })}
+              title="Align Center"
+            >
+              ↔
+            </MenuButton>
+            <MenuButton
+              onClick={() => editor.chain().focus().setTextAlign("right").run()}
+              isActive={editor.isActive({ textAlign: "right" })}
+              title="Align Right"
+            >
+              →
+            </MenuButton>
+            <div className="w-px h-6 bg-gray-300 mx-1" />
+            <input
+              type="color"
+              onChange={(e) =>
+                editor.chain().focus().setColor(e.target.value).run()
+              }
+              className="w-8 h-8 p-1 rounded cursor-pointer"
+              title="Text Color"
             />
-          </MenuButton>
-          <MenuButton
-            onClick={() => editor.chain().focus().toggleOrderedList().run()}
-            isActive={editor.isActive("orderedList")}
-            title="Ordered List"
-          >
-            <Image
-              src="/numbered-list.svg"
-              alt="Numbered list"
-              width={16}
-              height={16}
-              className="w-5 h-5"
-            />
-          </MenuButton>
-          <div className="w-px h-6 bg-gray-300 mx-1" />
-          <MenuButton
-            onClick={() => editor.chain().focus().setTextAlign("left").run()}
-            isActive={editor.isActive({ textAlign: "left" })}
-            title="Align Left"
-          >
-            ←
-          </MenuButton>
-          <MenuButton
-            onClick={() => editor.chain().focus().setTextAlign("center").run()}
-            isActive={editor.isActive({ textAlign: "center" })}
-            title="Align Center"
-          >
-            ↔
-          </MenuButton>
-          <MenuButton
-            onClick={() => editor.chain().focus().setTextAlign("right").run()}
-            isActive={editor.isActive({ textAlign: "right" })}
-            title="Align Right"
-          >
-            →
-          </MenuButton>
-          <div className="w-px h-6 bg-gray-300 mx-1" />
-          <input
-            type="color"
-            onChange={(e) =>
-              editor.chain().focus().setColor(e.target.value).run()
-            }
-            className="w-8 h-8 p-1 rounded cursor-pointer"
-            title="Text Color"
-          />
-          <div className="w-px h-6 bg-gray-300 mx-1" />
-          <MenuButton
-            onClick={() => editor.chain().focus().undo().run()}
-            title="Undo"
-          >
-            ↶
-          </MenuButton>
-          <MenuButton
-            onClick={() => editor.chain().focus().redo().run()}
-            title="Redo"
-          >
-            ↷
-          </MenuButton>
-          <div className="w-px h-6 bg-gray-300 mx-1" />
-          <MenuButton
-            onClick={() => setIsExportDialogOpen(true)}
-            title="Export as PDF"
-          >
-            <TbFileDownload className="w-5 h-5" />
-          </MenuButton>
+            <div className="w-px h-6 bg-gray-300 mx-1" />
+            <MenuButton
+              onClick={() => editor.chain().focus().undo().run()}
+              title="Undo"
+            >
+              ↶
+            </MenuButton>
+            <MenuButton
+              onClick={() => editor.chain().focus().redo().run()}
+              title="Redo"
+            >
+              ↷
+            </MenuButton>
+            <div className="w-px h-6 bg-gray-300 mx-1" />
+            <MenuButton
+              onClick={() => setIsExportDialogOpen(true)}
+              title="Export as PDF"
+            >
+              <TbFileDownload className="w-5 h-5" />
+            </MenuButton>
+          </div>
         </div>
-        <div className="relative">
+        <div className="bg-card">
           <EditorContent editor={editor} />
-          <AnimatePresence>
-            {editor?.state.selection.content() &&
-              editor.state.doc
-                .textBetween(
-                  editor.state.selection.from,
-                  editor.state.selection.to
-                )
-                .trim() && (
-                <motion.div
-                  initial={{ opacity: 0, y: -5 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -5 }}
-                  transition={{ duration: 0.1 }}
-                  className="fixed z-50 flex items-center gap-1 rounded-md shadow-lg border"
-                  style={{
-                    top: aiButtonPosition.top,
-                    left: aiButtonPosition.left,
-                    // transform: "translateX(-50%)",
+        </div>
+        <AnimatePresence>
+          {editor?.state.selection.content() && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: -60 }}
+              exit={{ opacity: 0, y: 10 }}
+              transition={{ duration: 0.1 }}
+              className="fixed z-50 flex items-center gap-1 rounded-md shadow-lg border bg-background"
+              style={{
+                top: aiButtonPosition.top,
+                left: aiButtonPosition.left,
+              }}
+            >
+              <div className="flex gap-1">
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="h-6 text-xs whitespace-nowrap"
+                  onClick={() =>
+                    handleAISuggestion(
+                      editor.state.doc.textBetween(
+                        editor.state.selection.from,
+                        editor.state.selection.to
+                      )
+                    )
+                  }
+                >
+                  <Sparkles className="h-3 w-3 mr-1" />
+                  Ask AI
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-6 text-xs whitespace-nowrap"
+                  onClick={() => {
+                    setSelectedContent(
+                      editor.state.doc.textBetween(
+                        editor.state.selection.from,
+                        editor.state.selection.to
+                      )
+                    );
+                    setIsCommentDialogOpen(true);
                   }}
                 >
-                  <Button
-                    variant="default"
-                    size="sm"
-                    className="h-6 text-xs"
-                    onClick={() =>
-                      handleAISuggestion(
-                        editor.state.doc.textBetween(
-                          editor.state.selection.from,
-                          editor.state.selection.to
-                        )
-                      )
-                    }
-                  >
-                    <Sparkles className="size-full" />
-                    Ask AI
-                  </Button>
-                </motion.div>
-              )}
-          </AnimatePresence>
-        </div>
+                  <MessageCircle className="h-3 w-3 mr-1" />
+                  Comment
+                </Button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
       <AlertDialog
         open={isExportDialogOpen}
@@ -728,6 +812,50 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
           )}
         </PopoverContent>
       </Popover>
+      <Dialog open={isCommentDialogOpen} onOpenChange={setIsCommentDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Comment</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="p-3 bg-muted/50 rounded-md">
+              <p className="text-sm text-muted-foreground">Selected text:</p>
+              <p className="text-sm mt-1">{selectedContent}</p>
+            </div>
+            <Textarea
+              placeholder="Enter your comment or question..."
+              value={commentText}
+              onChange={(e) => setCommentText(e.target.value)}
+              className="min-h-[100px]"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsCommentDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (commentText.trim()) {
+                  commentMutation.mutate({
+                    content: selectedContent,
+                    comment: commentText,
+                  });
+                }
+              }}
+              disabled={!commentText.trim() || commentMutation.isPending}
+            >
+              {commentMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Submit"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </TooltipProvider>
   );
 };
