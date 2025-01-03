@@ -7,19 +7,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MoreVertical, Pencil, Trash } from "lucide-react";
 import { format } from "date-fns";
 import Link from "next/link";
 import { gradientThemes } from "@/lib/gradients";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { AlertDialog, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
@@ -70,37 +60,6 @@ export function ChatCard({ chat, onEditClick, onDeleteClick }: ChatCardProps) {
               : "Unknown date"}
           </CardDescription>
         </div>
-        {/* <AlertDialog>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <AlertDialogTrigger asChild>
-                <DropdownMenuItem onClick={() => onEditClick(chat)}>
-                  <Pencil className="mr-2 h-4 w-4" />
-                  Edit
-                </DropdownMenuItem>
-              </AlertDialogTrigger>
-              <AlertDialogTrigger asChild>
-                <DropdownMenuItem
-                  className="text-red-600"
-                  onClick={() => onDeleteClick(chat)}
-                >
-                  <Trash className="mr-2 h-4 w-4" />
-                  Delete
-                </DropdownMenuItem>
-              </AlertDialogTrigger>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </AlertDialog> */}
       </CardHeader>
       <Link href={`/chats/${chat.id}`}>
         <CardContent>
