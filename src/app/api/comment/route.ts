@@ -17,37 +17,39 @@ Please address this comment/question: "${comment}"
 
 Provide a clear and detailed response that directly addresses the comment/question while maintaining context with the original content.
 
-Format your response with proper paragraphs, and if needed, use:
-- Bold text with **asterisks**
-- Lists with proper indentation
-- Clear paragraph breaks
+Guidelines:
+- Write in clear, concise paragraphs
+- Use emphasis sparingly and naturally
+- Present information in a flowing, narrative style
+- Keep technical terms simple and accessible
+- Maintain a professional but conversational tone
+- Break complex ideas into digestible sections
 
-Keep the tone professional and ensure the response flows naturally with the original content.`;
+Format the response in clean HTML paragraphs without visible HTML tags or bullet points.`;
 
     const result = await chatSession.sendMessage(prompt);
     let response = result.response.text();
 
-    // Format the response
+    // Clean up the response
     response = response
-      // Add line breaks before and after the response
       .trim()
-      // Ensure proper spacing after punctuation
-      .replace(/([.!?])\s*(?=\S)/g, '$1 ')
-      // Remove any HTML tags that might have been generated
-      .replace(/<[^>]*>/g, '')
-      // Ensure proper markdown formatting
-      .replace(/\*\*/g, '**')
-      // Add proper spacing around lists
-      .replace(/(?:\r\n|\r|\n)(?=[-*])/g, '\n\n')
-      // Ensure consistent line breaks
-      .replace(/\n{3,}/g, '\n\n');
-
-    // Add a separator before the response
-    const formattedResponse = `\n\n**Response:** ${response}\n`;
+      // Remove HTML annotations
+      .replace(/```html/g, '')
+      .replace(/```/g, '')
+      // Clean up bullet points
+      .replace(/•\s*/g, '')
+      // Remove excessive whitespace
+      .replace(/\n{3,}/g, '\n\n')
+      .replace(/\s{2,}/g, ' ')
+      // Format paragraphs properly
+      .split('\n')
+      .filter(line => line.trim())
+      .map(line => `<p>${line.trim()}</p>`)
+      .join('\n');
 
     return NextResponse.json({
       status: "success",
-      response: formattedResponse,
+      data: response,
     });
   } catch (error) {
     console.error("Error in comment endpoint:", error);

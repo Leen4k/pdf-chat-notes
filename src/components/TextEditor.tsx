@@ -485,23 +485,34 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
   const [commentText, setCommentText] = useState("");
   const [selectedContent, setSelectedContent] = useState("");
 
-  // Add comment mutation
+  // Update the comment mutation
   const commentMutation = useMutation({
-    mutationFn: async ({
-      content,
-      comment,
-    }: {
-      content: string;
-      comment: string;
-    }) => {
+    mutationFn: async ({ content, comment }: { content: string; comment: string }) => {
       const response = await axios.post("/api/comment", { content, comment });
       return response.data;
     },
     onSuccess: (data) => {
-      // Insert the response at the current selection
       if (editor) {
-        const pos = editor.state.selection.from;
-        editor.chain().focus().insertContent(data.response).run();
+        // Store the current selection
+        const from = editor.state.selection.from;
+        const to = editor.state.selection.to;
+        
+        // Format the response similar to Ask AI
+        const formattedContent = `
+<div class="ai-qa-block">
+  <div class="ai-question"><strong>💭 Comment:</strong> ${commentText}</div>
+  <div class="ai-response">${data.data}</div>
+</div>`;
+
+        // Insert the response after the selected text
+        editor
+          .chain()
+          .focus()
+          .insertContentAt(to, formattedContent)
+          .run();
+
+        // Restore the original selection
+        editor.commands.setTextSelection({ from, to });
       }
       setIsCommentDialogOpen(false);
       setCommentText("");
