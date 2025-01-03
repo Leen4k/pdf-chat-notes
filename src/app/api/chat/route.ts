@@ -258,7 +258,7 @@ export async function GET(req: Request) {
       .select()
       .from(chats)
       .where(eq(chats.userId, userId))
-      .orderBy(chats.position, desc(chats.updatedAt));
+      .orderBy(chats.position);
 
     // Cache the result
     console.log("💾 Caching user chats");

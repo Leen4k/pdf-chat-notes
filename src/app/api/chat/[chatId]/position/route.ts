@@ -3,6 +3,7 @@ import { chats } from "@/lib/db/schema";
 import { auth } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { invalidateCache } from "@/lib/redis";
 
 export async function PATCH(
   req: Request,
@@ -27,6 +28,15 @@ export async function PATCH(
       .where(eq(chats.id, chatId))
       .returning();
 
+    // Invalidate all related caches
+    await Promise.all([
+      invalidateCache(`user:${userId}:chats`),
+      invalidateCache(`chat:${chatId}`),
+      invalidateCache(`chats:${userId}:${chatId}`),
+    ]);
+
+    console.log("🗑️ Invalidated caches for chat position update");
+
     return NextResponse.json({
       message: "Chat position updated successfully",
       chat: updatedChat,
@@ -38,4 +48,4 @@ export async function PATCH(
       { status: 500 }
     );
   }
-} 
+}
