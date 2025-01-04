@@ -72,7 +72,7 @@ const FileUpload = () => {
           },
           {
             onSuccess: (data) => {
-              toast.success(data.message);
+              // toast.success(data.message);
               // Optionally navigate to the chat if not already there
               if (chatId) {
                 router.push(`/chats/${chatId}`);

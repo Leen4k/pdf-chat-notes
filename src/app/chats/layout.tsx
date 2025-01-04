@@ -1,10 +1,10 @@
 "use client";
-import { AppSidebar } from "@/components/Sidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { gradientThemes } from "@/lib/constant/gradients";
+import { AppSidebar } from "@/components/sidebar/AppSidebar";
 
 export default function ChatsLayout({
   children,

@@ -16,8 +16,9 @@ interface ConfirmationDialogProps {
   title: string;
   description: string;
   onConfirm: () => void;
-  confirmText?: string;
-  confirmVariant?: "destructive" | "default";
+  confirmText: string;
+  confirmVariant?: "default" | "destructive";
+  confirmButtonClass?: string;
   cancelText?: string;
 }
 
@@ -29,6 +30,7 @@ export const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
   onConfirm,
   confirmText = "Confirm",
   confirmVariant = "default",
+  confirmButtonClass,
   cancelText = "Cancel",
 }) => {
   return (

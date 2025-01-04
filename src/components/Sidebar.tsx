@@ -42,7 +42,6 @@ import toast from "react-hot-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { TbEdit } from "react-icons/tb";
-import { useChatName } from "@/hooks/useChatName";
 import { IoIosArrowBack } from "react-icons/io";
 import { GradientThemeSelector } from "./GradientThemeSelector";
 import { ConfirmationDialog } from "@/components/dialogs/ConfirmationDialog";
