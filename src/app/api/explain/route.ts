@@ -1,4 +1,4 @@
-import { chatSession } from "@/lib/gemini-model";
+import { chatSession } from "@/lib/llm/gemini-model";
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
@@ -27,15 +27,15 @@ export async function POST(req: Request) {
     const cleanResponse = response
       .trim()
       // Convert any bullet points to paragraphs
-      .replace(/•\s*(.*?)(?=(?:•|\n|$))/g, '<p>$1</p>')
+      .replace(/•\s*(.*?)(?=(?:•|\n|$))/g, "<p>$1</p>")
       // Remove any remaining bullet characters
-      .replace(/[•◦]/g, '')
+      .replace(/[•◦]/g, "")
       // Clean up extra spaces and line breaks
-      .replace(/\s+/g, ' ')
-      .replace(/<p>\s+/g, '<p>')
-      .replace(/\s+<\/p>/g, '</p>')
+      .replace(/\s+/g, " ")
+      .replace(/<p>\s+/g, "<p>")
+      .replace(/\s+<\/p>/g, "</p>")
       // Ensure proper spacing between elements
-      .replace(/<\/p><p>/g, '</p>\n<p>');
+      .replace(/<\/p><p>/g, "</p>\n<p>");
 
     return NextResponse.json({
       status: "success",

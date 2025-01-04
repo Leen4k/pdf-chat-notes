@@ -1,7 +1,7 @@
 import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai";
 import { TaskType } from "@google/generative-ai";
-import { chats, fileChunks, files } from "./db/schema";
-import { db } from "./db";
+import { chats, fileChunks, files } from "../db/schema";
+import { db } from "../db";
 import { cosineDistance, desc, eq, gt, sql, and } from "drizzle-orm";
 
 export const embeddings = new GoogleGenerativeAIEmbeddings({

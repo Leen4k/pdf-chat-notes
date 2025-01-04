@@ -1,5 +1,5 @@
-import { findSimilarChunks } from "@/lib/gemini";
-import { chatSession } from "@/lib/gemini-model";
+import { findSimilarChunks } from "@/lib/llm/gemini";
+import { chatSession } from "@/lib/llm/gemini-model";
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 

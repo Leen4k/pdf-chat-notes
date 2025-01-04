@@ -54,7 +54,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import ThemeToggler from "@/components/themes/ThemeToggler";
-import { getCachedChats, setCachedChats } from "@/lib/redis";
+import { getCachedChats, setCachedChats } from "@/lib/cache/redis";
 import { useAuth } from "@clerk/nextjs";
 
 // Type definition remains the same
@@ -453,7 +453,15 @@ export function AppSidebar() {
 
   // Add chat name update mutation
   const updateChatMutation = useMutation({
-    mutationFn: async ({ id, name, gradientId }: { id: number; name: string; gradientId?: number }) => {
+    mutationFn: async ({
+      id,
+      name,
+      gradientId,
+    }: {
+      id: number;
+      name: string;
+      gradientId?: number;
+    }) => {
       const response = await axios.patch(`/api/chat/${id}`, {
         name,
         gradientId,
@@ -510,12 +518,12 @@ export function AppSidebar() {
         return [...oldData, newFile];
       }
     );
-    
+
     // Also invalidate the query to ensure consistency
     queryClient.invalidateQueries({
       queryKey: ["documentChats", chatId],
     });
-    
+
     toast.success("File uploaded successfully");
   };
 

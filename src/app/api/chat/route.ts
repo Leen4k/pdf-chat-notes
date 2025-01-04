@@ -1,4 +1,4 @@
-import { downloadFromSupabase } from "@/lib/DownloadFromSupabase";
+import { downloadFromSupabase } from "@/lib/system/DownloadFromSupabase";
 import { NextResponse } from "next/server";
 import { WebPDFLoader } from "@langchain/community/document_loaders/web/pdf";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
@@ -6,14 +6,14 @@ import {
   embeddings,
   findSimilarChunks,
   processAndStoreEmbeddings,
-} from "@/lib/gemini";
+} from "@/lib/llm/gemini";
 import { chats, fileChunks, files } from "@/lib/db/schema";
 import { and, eq, sql, desc, asc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { auth } from "@clerk/nextjs/server";
 import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai";
 import { revalidatePath } from "next/cache";
-import redis, { invalidateCache } from "@/lib/redis";
+import redis, { invalidateCache } from "@/lib/cache/redis";
 
 async function loadPDF(url: string | URL | Request) {
   try {

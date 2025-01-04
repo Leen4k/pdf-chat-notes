@@ -20,7 +20,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
-import { gradientThemes } from "@/lib/gradients";
+import { gradientThemes } from "@/lib/constant/gradients";
 import { useEffect } from "react";
 import { Separator } from "../ui/separator";
 

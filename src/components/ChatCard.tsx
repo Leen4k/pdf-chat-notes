@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import Link from "next/link";
-import { gradientThemes } from "@/lib/gradients";
+import { gradientThemes } from "@/lib/constant/gradients";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
@@ -20,11 +20,9 @@ interface ChatCardProps {
     createdAt: string;
     gradientId?: number;
   };
-  onEditClick: (chat: any) => void;
-  onDeleteClick: (chat: any) => void;
 }
 
-export function ChatCard({ chat, onEditClick, onDeleteClick }: ChatCardProps) {
+export function ChatCard({ chat }: ChatCardProps) {
   const {
     attributes,
     listeners,

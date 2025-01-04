@@ -1,4 +1,4 @@
-import { gradientThemes } from "@/lib/gradients";
+import { gradientThemes } from "@/lib/constant/gradients";
 import {
   DropdownMenu,
   DropdownMenuContent,

@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { chats, fileChunks, files } from "@/lib/db/schema";
 import { auth } from "@clerk/nextjs/server";
-import { embeddings } from "@/lib/gemini";
+import { embeddings } from "@/lib/llm/gemini";
 import { eq, sql, and, ilike, desc } from "drizzle-orm";
 import { NextResponse } from "next/server";
 

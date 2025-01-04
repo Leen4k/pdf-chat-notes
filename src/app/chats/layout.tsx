@@ -4,7 +4,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
-import { gradientThemes } from "@/lib/gradients";
+import { gradientThemes } from "@/lib/constant/gradients";
 
 export default function ChatsLayout({
   children,

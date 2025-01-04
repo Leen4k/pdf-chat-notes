@@ -1,7 +1,5 @@
 import { Pinecone, PineconeRecord } from "@pinecone-database/pinecone";
-import { downloadFromSupabase } from "./DownloadFromSupabase";
-
-
+import { downloadFromSupabase } from "../system/DownloadFromSupabase";
 
 const pc = new Pinecone({ apiKey: process.env.PINECONE_API_KEY! });
 

@@ -3,7 +3,7 @@ import { chats } from "@/lib/db/schema";
 import { auth } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { invalidateCache } from "@/lib/redis";
+import { invalidateCache } from "@/lib/cache/redis";
 
 export async function GET(
   req: Request,
@@ -59,7 +59,7 @@ export async function PATCH(
     await Promise.all([
       invalidateCache(`user:${userId}:chats`),
       invalidateCache(`chat:${chatId}`),
-      invalidateCache(`chats:${userId}:${chatId}`)
+      invalidateCache(`chats:${userId}:${chatId}`),
     ]);
 
     console.log("🗑️ Invalidated caches for chat update");
@@ -95,7 +95,7 @@ export async function DELETE(
     await Promise.all([
       invalidateCache(`user:${userId}:chats`),
       invalidateCache(`chat:${chatId}`),
-      invalidateCache(`chats:${userId}:${chatId}`)
+      invalidateCache(`chats:${userId}:${chatId}`),
     ]);
 
     console.log("🗑️ Invalidated caches for chat deletion");

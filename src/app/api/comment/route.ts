@@ -1,4 +1,4 @@
-import { chatSession } from "@/lib/gemini-model";
+import { chatSession } from "@/lib/llm/gemini-model";
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
@@ -10,7 +10,7 @@ export async function POST(req: Request) {
 
   try {
     const { content, comment } = await req.json();
-    
+
     const prompt = `Based on this content: "${content}"
     
 Please address this comment/question: "${comment}"
@@ -34,18 +34,18 @@ Format the response in clean HTML paragraphs without visible HTML tags or bullet
     response = response
       .trim()
       // Remove HTML annotations
-      .replace(/```html/g, '')
-      .replace(/```/g, '')
+      .replace(/```html/g, "")
+      .replace(/```/g, "")
       // Clean up bullet points
-      .replace(/•\s*/g, '')
+      .replace(/•\s*/g, "")
       // Remove excessive whitespace
-      .replace(/\n{3,}/g, '\n\n')
-      .replace(/\s{2,}/g, ' ')
+      .replace(/\n{3,}/g, "\n\n")
+      .replace(/\s{2,}/g, " ")
       // Format paragraphs properly
-      .split('\n')
-      .filter(line => line.trim())
-      .map(line => `<p>${line.trim()}</p>`)
-      .join('\n');
+      .split("\n")
+      .filter((line) => line.trim())
+      .map((line) => `<p>${line.trim()}</p>`)
+      .join("\n");
 
     return NextResponse.json({
       status: "success",
