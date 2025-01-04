@@ -40,4 +40,4 @@ export const TrashItem = ({ item, onRestore, onDelete }: TrashItemProps) => (
       </div>
     </SidebarMenuButton>
   </SidebarMenuItem>
-); 
+);

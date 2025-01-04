@@ -90,7 +90,7 @@ export const ChatHeader = ({ chatData }: ChatHeaderProps) => {
         <ThemeToggler />
       </div>
 
-      <div className="pl-4 py-1">
+      <div className="px-4 py-1">
         <div className="flex items-center justify-between">
           {isEditingChatName ? (
             <form

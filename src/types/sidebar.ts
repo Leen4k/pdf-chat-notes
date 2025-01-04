@@ -29,4 +29,4 @@ export interface RenameDialogState {
   isOpen: boolean;
   fileId: string | null;
   currentName: string;
-} 
+}

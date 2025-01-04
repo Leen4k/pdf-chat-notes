@@ -15,4 +15,4 @@ export interface ChatOrderUpdate {
 export interface CreateChatInput {
   name: string;
   gradientId?: number;
-} 
+}

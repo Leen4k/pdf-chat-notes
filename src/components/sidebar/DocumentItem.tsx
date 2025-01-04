@@ -25,7 +25,7 @@ export const DocumentItem = ({
   <SidebarMenuItem className="relative group py-1.5">
     <SidebarMenuButton asChild>
       <Link
-        className={`relative w-full flex items-center group gap-3 rounded-md p-2 ${
+        className={`relative w-full flex items-center justify-between group gap-3 rounded-md py-2 ${
           isActive ? "bg-accent text-accent-foreground" : "hover:bg-accent/50"
         }`}
         href={`/chats/${chat.chatId}?pdfUrl=${encodeURIComponent(chat.pdfUrl)}`}
@@ -46,7 +46,7 @@ export const DocumentItem = ({
             <TbEdit className="h-4 w-4" />
           </button>
         </div>
-        <div className="flex-shrink-0 flex items-center gap-2 ml-2">
+        <div className="flex-shrink-0 flex justify-center items-center gap-2 ml-2">
           <Checkbox
             checked={chat.isSelected}
             onCheckedChange={onToggleSelection}

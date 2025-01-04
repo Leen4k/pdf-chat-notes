@@ -487,7 +487,13 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
 
   // Update the comment mutation
   const commentMutation = useMutation({
-    mutationFn: async ({ content, comment }: { content: string; comment: string }) => {
+    mutationFn: async ({
+      content,
+      comment,
+    }: {
+      content: string;
+      comment: string;
+    }) => {
       const response = await axios.post("/api/comment", { content, comment });
       return response.data;
     },
@@ -496,7 +502,7 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
         // Store the current selection
         const from = editor.state.selection.from;
         const to = editor.state.selection.to;
-        
+
         // Format the response similar to Ask AI
         const formattedContent = `
 <div class="ai-qa-block">
@@ -505,11 +511,7 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
 </div>`;
 
         // Insert the response after the selected text
-        editor
-          .chain()
-          .focus()
-          .insertContentAt(to, formattedContent)
-          .run();
+        editor.chain().focus().insertContentAt(to, formattedContent).run();
 
         // Restore the original selection
         editor.commands.setTextSelection({ from, to });
@@ -522,6 +524,33 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
       toast.error("Failed to process comment");
     },
   });
+
+  // Add this state to track if text is selected
+  const [isTextSelected, setIsTextSelected] = useState(false);
+
+  // Update the effect that handles selection changes
+  useEffect(() => {
+    if (!editor) return;
+
+    const updateSelection = () => {
+      const hasSelection = !editor.state.selection.empty;
+      setIsTextSelected(hasSelection);
+      if (hasSelection) {
+        updateAIButtonPosition();
+      }
+    };
+
+    // Listen for both selection update and focus/blur events
+    editor.on("selectionUpdate", updateSelection);
+    editor.on("blur", () => setIsTextSelected(false));
+    editor.on("focus", updateSelection);
+
+    return () => {
+      editor.off("selectionUpdate", updateSelection);
+      editor.off("blur", () => setIsTextSelected(false));
+      editor.off("focus", updateSelection);
+    };
+  }, [editor, updateAIButtonPosition]);
 
   if (!editor) {
     return null;
@@ -710,10 +739,10 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
           <EditorContent editor={editor} />
         </div>
         <AnimatePresence>
-          {editor?.state.selection.content() && (
+          {isTextSelected && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: -60 }}
+              animate={{ opacity: 1, y: -20 }}
               exit={{ opacity: 0, y: 10 }}
               transition={{ duration: 0.1 }}
               className="fixed z-50 flex items-center gap-1 rounded-md shadow-lg border bg-background"

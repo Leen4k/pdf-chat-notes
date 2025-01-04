@@ -33,4 +33,4 @@ export const TrashSkeleton = ({ count = 2 }: SkeletonProps) => (
       </SidebarMenuItem>
     ))}
   </>
-); 
+);
