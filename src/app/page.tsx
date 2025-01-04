@@ -189,16 +189,10 @@ export default function Home() {
     },
   });
 
-  const updateChatOrderMutation = useMutation({
-    mutationFn: async ({
-      chatId,
-      newPosition,
-    }: {
-      chatId: number;
-      newPosition: number;
-    }) => {
-      const response = await axios.patch(`/api/chat/${chatId}/position`, {
-        newPosition,
+  const updateChatOrdersMutation = useMutation({
+    mutationFn: async (updates: { id: number; position: number }[]) => {
+      const response = await axios.patch('/api/chat/position', {
+        updates,
       });
       return response.data;
     },
@@ -234,10 +228,12 @@ export default function Home() {
 
         const newOrder = arrayMove(items, oldIndex, newIndex);
 
-        updateChatOrderMutation.mutate({
-          chatId: active.id,
-          newPosition: newIndex,
-        });
+        const updates = newOrder.map((chat, index) => ({
+          id: chat.id,
+          position: index,
+        }));
+
+        updateChatOrdersMutation.mutate(updates);
 
         return newOrder;
       });

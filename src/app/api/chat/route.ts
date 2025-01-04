@@ -203,33 +203,6 @@ export async function POST(req: Request, res: Response) {
   }
 }
 
-// export async function GET(req: Request) {
-//   // const { userId } = auth();
-
-//   // if (!userId) {
-//   //   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-//   // }
-//   const userId = "user_2iErJ4Rtg6qQ03h7FSHTrYB4XcZ";
-
-//   try {
-//     const userChats = await db
-//       .select()
-//       .from(chats)
-//       .where(eq(chats.userId, "user_2iErJ4Rtg6qQ03h7FSHTrYB4XcZ"))
-//       .orderBy(chats.position, desc(chats.updatedAt));
-
-//     return NextResponse.json({
-//       status: 200,
-//       data: userChats,
-//     });
-//   } catch (error) {
-//     return NextResponse.json(
-//       { error: "Internal server error" },
-//       { status: 500 }
-//     );
-//   }
-// }
-
 export async function GET(req: Request) {
   const { userId } = auth();
 
