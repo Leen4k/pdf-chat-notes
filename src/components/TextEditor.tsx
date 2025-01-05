@@ -57,6 +57,20 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  useLiveblocksExtension,
+  FloatingComposer,
+  FloatingThreads,
+  AnchoredThreads,
+} from "@liveblocks/react-tiptap";
+import { ClientSideSuspense, useThreads } from "@liveblocks/react/suspense";
+import {
+  useRoom,
+  useOthers,
+  useSelf,
+  useStorage,
+  useMutation as useLiveblocksMutation,
+} from "@/liveblocks.config";
 
 interface TextEditorProps {
   editorContent: string;
@@ -76,10 +90,28 @@ type DictionaryResponse = {
   }[];
 };
 
-const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
+const TextEditor = (props: TextEditorProps) => {
+  return (
+    <ClientSideSuspense
+      fallback={
+        <div className="w-full h-screen flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      }
+    >
+      {() => <EditorWithLiveblocks {...props} />}
+    </ClientSideSuspense>
+  );
+};
+
+const EditorWithLiveblocks = ({ editorContent, onChange }: TextEditorProps) => {
   const { chatId } = useParams();
   const queryClient = useQueryClient();
   const { theme } = useTheme();
+  const room = useRoom();
+  const others = useOthers();
+  const currentUser = useSelf();
+  const editorRef = useRef<any>(null);
 
   const preprocessContent = (content: string) => {
     // Replace Markdown bold formatting with Tiptap bold markup
@@ -214,9 +246,73 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
     }
   }, [selectedRange]);
 
-  // Update editor props
+  // Add storage hook to sync content
+  const content = useStorage((root) => root.content);
+
+  // Add Liveblocks mutation to update content with error handling
+  const updateContent = useLiveblocksMutation(
+    ({ storage }, newContent: string) => {
+      try {
+        storage.set("content", newContent);
+      } catch (error) {
+        console.error("Failed to update content:", error);
+        toast.error("Failed to sync content");
+      }
+    },
+    []
+  );
+
+  // Add a loading state for initial content
+  const [isInitialContentSet, setIsInitialContentSet] = useState(false);
+
+  // Update the cursor update handler
+  const updateCursor = useCallback(() => {
+    if (!editorRef.current || !room) return;
+
+    const selection = editorRef.current.view.state.selection;
+    const { from } = selection;
+
+    const editorElement = editorRef.current.view.dom;
+    const editorRect = editorElement.getBoundingClientRect();
+    const pos = editorRef.current.view.coordsAtPos(from);
+
+    // Calculate position relative to viewport
+    const x = pos.left - editorRect.left + window.scrollX;
+    const y = pos.top - editorRect.top + window.scrollY;
+
+    room.updatePresence({
+      cursor: {
+        x,
+        y,
+      },
+      selection: {
+        from,
+        to: selection.to,
+      },
+    });
+  }, [room]);
+
+  // Update the liveblocks extension configuration
+  const liveblocks = useLiveblocksExtension({
+    field: chatId as string,
+    offlineSupport_experimental: true,
+    user: {
+      info: {
+        name: currentUser?.info?.name || "Anonymous",
+        color: currentUser?.info?.color || "#000000",
+      },
+    },
+    collaborative: true,
+    sync: {
+      defaultSelection: true,
+      defaultCursor: true,
+    },
+  });
+
+  // Update the editor configuration
   const editor = useEditor({
     extensions: [
+      liveblocks,
       StarterKit.configure({
         heading: false,
         paragraph: {
@@ -260,13 +356,54 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
         touchend: handleWordSelection,
       },
     },
-    content: savedContent || "",
+    content: content || editorContent || "<p></p>",
     onUpdate: ({ editor }) => {
-      const content = editor.getHTML();
-      onChange(content);
-      debouncedSave(content);
+      const newContent = editor.getHTML();
+      if (isInitialContentSet) {
+        // Only update after initial content is set
+        updateContent(newContent);
+        onChange(newContent);
+        debouncedSave(newContent);
+      }
     },
   });
+
+  // Effect to handle initial content
+  useEffect(() => {
+    if (content !== undefined && !isInitialContentSet) {
+      setIsInitialContentSet(true);
+    }
+  }, [content]);
+
+  // Update editorRef when editor instance changes
+  useEffect(() => {
+    if (editor) {
+      editorRef.current = editor;
+    }
+  }, [editor]);
+
+  // Update the cursor effect to use editorRef
+  useEffect(() => {
+    if (!editorRef.current || !room) return;
+
+    const handleSelectionUpdate = () => {
+      updateCursor();
+    };
+
+    const handleScroll = () => {
+      updateCursor();
+    };
+
+    editorRef.current.on("selectionUpdate", handleSelectionUpdate);
+    window.addEventListener("scroll", handleScroll);
+
+    return () => {
+      if (editorRef.current) {
+        editorRef.current.off("selectionUpdate", handleSelectionUpdate);
+      }
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, [room, updateCursor]);
 
   useEffect(() => {
     if (editor && savedContent && !editor.getText().trim()) {
@@ -552,6 +689,86 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
     };
   }, [editor, updateAIButtonPosition]);
 
+  // Add ThreadOverlay component for comments
+  const ThreadOverlay = () => {
+    const { threads } = useThreads({ query: { resolved: false } });
+
+    return (
+      <>
+        <FloatingThreads
+          editor={editor}
+          threads={threads}
+          className="w-[350px] block md:hidden"
+        />
+        <AnchoredThreads
+          editor={editor}
+          threads={threads}
+          className="w-[350px] hidden md:block"
+        />
+      </>
+    );
+  };
+
+  // Add cursor overlay component
+  const CursorOverlay = () => {
+    const editorElement = editor?.view?.dom;
+    const editorRect = editorElement?.getBoundingClientRect();
+
+    return (
+      <div className="pointer-events-none absolute inset-0">
+        {others.map(({ connectionId, presence, info }) => {
+          if (!presence.cursor || !editorRect) return null;
+
+          // Calculate position relative to viewport
+          const x = presence.cursor.x + editorRect.left - window.scrollX;
+          const y = presence.cursor.y + editorRect.top - window.scrollY;
+
+          return (
+            <div
+              key={connectionId}
+              className="absolute"
+              style={{
+                left: x,
+                top: y,
+                transform: "translateY(-100%)",
+                transition: "all 100ms ease-out",
+                zIndex: 50,
+              }}
+            >
+              <div
+                className="w-0.5 h-5 relative"
+                style={{
+                  backgroundColor: info?.color || "#000",
+                  transition: "all 100ms ease-out",
+                }}
+              >
+                <div
+                  className="absolute top-0 left-0 px-2 py-1 rounded text-xs text-white whitespace-nowrap transform -translate-y-full"
+                  style={{
+                    backgroundColor: info?.color || "#000",
+                    transition: "all 100ms ease-out",
+                  }}
+                >
+                  {info?.name || "Anonymous"}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // Add this effect to handle window resize
+  useEffect(() => {
+    const handleResize = () => {
+      updateCursor();
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [updateCursor]);
+
   if (!editor) {
     return null;
   }
@@ -735,8 +952,13 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
             </MenuButton>
           </div>
         </div>
-        <div className="bg-card">
+        <div className="bg-card relative">
           <EditorContent editor={editor} />
+          <CursorOverlay />
+          <FloatingComposer editor={editor} style={{ width: 350 }} />
+          <ClientSideSuspense fallback={null}>
+            <ThreadOverlay />
+          </ClientSideSuspense>
         </div>
         <AnimatePresence>
           {isTextSelected && (
