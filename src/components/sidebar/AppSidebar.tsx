@@ -27,6 +27,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { ChatHeader } from "./ChatHeader";
 import { ChatSkeleton, TrashSkeleton } from "../skeletons/Skeletons";
 import { Chat } from "@/types/chat";
+import { Button } from "@/components/ui/button";
+import { CollaborationSection } from "./CollaborationSection";
 
 export function AppSidebar() {
   const { userId } = useAuth();
@@ -271,6 +273,8 @@ export function AppSidebar() {
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
+
+          <CollaborationSection chatId={chatId as string} />
         </SidebarContent>
       </Sidebar>
 

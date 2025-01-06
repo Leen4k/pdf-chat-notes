@@ -35,7 +35,7 @@ const getRandomColor = () => {
 
 const PDFViewer = () => {
   const { chatId: id } = useParams();
-  // If no valid ID, you could show an error or redirect
+
   if (!id) {
     return <div>Invalid chat ID</div>;
   }

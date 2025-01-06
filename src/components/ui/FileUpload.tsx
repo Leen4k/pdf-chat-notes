@@ -16,7 +16,11 @@ interface CreateChatProps {
   file_url: string;
 }
 
-const FileUpload = () => {
+interface FileUploadProps {
+  onUploadComplete: (newFile: any) => void;
+}
+
+const FileUpload: React.FC<FileUploadProps> = ({ onUploadComplete }) => {
   const router = useRouter();
   const { chatId } = useParams(); // Get the current chatId
   const queryClient = useQueryClient();

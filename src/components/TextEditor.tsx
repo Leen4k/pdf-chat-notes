@@ -4,7 +4,6 @@ import BulletList from "@tiptap/extension-bullet-list";
 import ListItem from "@tiptap/extension-list-item";
 import OrderedList from "@tiptap/extension-ordered-list";
 import Heading from "@tiptap/extension-heading";
-import Image from "next/image";
 import TextAlign from "@tiptap/extension-text-align";
 import Highlight from "@tiptap/extension-highlight";
 import Underline from "@tiptap/extension-underline";
@@ -71,24 +70,12 @@ import {
   useStorage,
   useMutation as useLiveblocksMutation,
 } from "@/liveblocks.config";
+import { GoListUnordered, GoListOrdered } from "react-icons/go";
 
 interface TextEditorProps {
   editorContent: string;
   onChange: (content: string) => void;
 }
-
-// Add this type for dictionary response
-type DictionaryResponse = {
-  word: string;
-  phonetic: string;
-  meanings: {
-    partOfSpeech: string;
-    definitions: {
-      definition: string;
-      example?: string;
-    }[];
-  }[];
-};
 
 const TextEditor = (props: TextEditorProps) => {
   return (
@@ -876,26 +863,14 @@ const EditorWithLiveblocks = ({ editorContent, onChange }: TextEditorProps) => {
               isActive={editor.isActive("bulletList")}
               title="Bullet List"
             >
-              <Image
-                src="/bullet-list.svg"
-                alt="Bullet list"
-                width={16}
-                height={16}
-                className="w-5 h-5"
-              />
+              <GoListUnordered />
             </MenuButton>
             <MenuButton
               onClick={() => editor.chain().focus().toggleOrderedList().run()}
               isActive={editor.isActive("orderedList")}
               title="Ordered List"
             >
-              <Image
-                src="/numbered-list.svg"
-                alt="Numbered list"
-                width={16}
-                height={16}
-                className="w-5 h-5"
-              />
+              <GoListOrdered />
             </MenuButton>
             <div className="w-px h-6 bg-gray-300 mx-1" />
             <MenuButton
