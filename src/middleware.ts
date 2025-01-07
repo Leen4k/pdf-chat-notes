@@ -5,13 +5,17 @@ import { NextResponse } from "next/server";
 const isChatRoute = createRouteMatcher(["/chats/:id(.*)"]);
 const isChatApiRoute = createRouteMatcher([
   "/api/chat/:id(.*)",
-  // "/api/chat-auth(.*)",
+  "/api/chat-auth(.*)",
   // "/api/collaborate/:id(.*)",
   // "/api/search(.*)"
 ]);
 
 export default clerkMiddleware((auth, req) => {
   const userId = auth().userId;
+
+  if (req.nextUrl.pathname === "/api/chat-auth") {
+    return NextResponse.next();
+  }
 
   if (!userId && req.nextUrl.pathname !== "/") {
     // Redirect to sign-in page if not authenticated
@@ -20,6 +24,11 @@ export default clerkMiddleware((auth, req) => {
 
   // Check if the request is for a chat page or chat API
   if (isChatRoute(req) || isChatApiRoute(req)) {
+    // Don't check auth for the chat-auth endpoint itself
+    if (req.nextUrl.pathname === "/api/chat-auth") {
+      return NextResponse.next();
+    }
+
     // Extract chatId from URL for both page and API routes
     const chatId = req.nextUrl.pathname.split("/")[2];
     const baseUrl = req.nextUrl.origin;
@@ -73,8 +82,13 @@ export default clerkMiddleware((auth, req) => {
 
 export const config = {
   matcher: [
-    "/((?!.*\\..*|_next|_vercel|api/webhook).*)",
-    "/",
-    "/(api|trpc)(.*)",
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api/chat-auth (auth check endpoint)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
+    "/((?!api/chat-auth|_next/static|_next/image|favicon.ico).*)",
   ],
 };
