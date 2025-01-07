@@ -76,7 +76,7 @@
     "tailwindcss-animate": "^1.0.7",
     "useismobile": "^1.0.4",
     "uuid": "^11.0.3",
-    "y-protocols": "^0.0.7",
+    "y-protocols": "^1.0.6",
     "zod": "^3.24.1"
   },
   "devDependencies": {
