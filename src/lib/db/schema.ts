@@ -21,6 +21,7 @@ export const chats = pgTable("chats", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
   gradientId: integer("gradient_id"),
   position: integer("position"),
+  isCollaborative: boolean("is_collaborative").default(false),
 });
 
 export const files = pgTable("files", {
@@ -76,6 +77,21 @@ export const editorContent = pgTable("editor_content", {
     .references(() => chats.id, { onDelete: "cascade" }) // Add cascade here
     .notNull(),
   content: text("content").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const collaborations = pgTable("collaborations", {
+  id: serial("id").primaryKey(),
+  chatId: integer("chat_id")
+    .references(() => chats.id, { onDelete: "cascade" })
+    .notNull(),
+  userId: varchar("user_id", { length: 256 }).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  role: varchar("role", { length: 50 }).default("viewer").notNull(),
+  invitedBy: varchar("invited_by", { length: 256 }).notNull(),
+  invitedAt: timestamp("invited_at").notNull().defaultNow(),
+  lastActiveAt: timestamp("last_active_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

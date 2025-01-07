@@ -4,7 +4,6 @@ import BulletList from "@tiptap/extension-bullet-list";
 import ListItem from "@tiptap/extension-list-item";
 import OrderedList from "@tiptap/extension-ordered-list";
 import Heading from "@tiptap/extension-heading";
-import Image from "next/image";
 import TextAlign from "@tiptap/extension-text-align";
 import Highlight from "@tiptap/extension-highlight";
 import Underline from "@tiptap/extension-underline";
@@ -57,29 +56,42 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  useLiveblocksExtension,
+  FloatingComposer,
+  FloatingThreads,
+  AnchoredThreads,
+} from "@liveblocks/react-tiptap";
+import { ClientSideSuspense, useThreads } from "@liveblocks/react";
+import {
+  useRoom,
+  useOthers,
+  useSelf,
+  useStorage,
+  useMutation as useLiveblocksMutation,
+} from "@/liveblocks.config";
+import { GoListUnordered, GoListOrdered } from "react-icons/go";
+import { RoomProvider } from "@liveblocks/react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 
 interface TextEditorProps {
   editorContent: string;
   onChange: (content: string) => void;
 }
 
-// Add this type for dictionary response
-type DictionaryResponse = {
-  word: string;
-  phonetic: string;
-  meanings: {
-    partOfSpeech: string;
-    definitions: {
-      definition: string;
-      example?: string;
-    }[];
-  }[];
-};
-
-const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
+const TextEditorContent = () => {
   const { chatId } = useParams();
   const queryClient = useQueryClient();
   const { theme } = useTheme();
+  const room = useRoom();
+  const others = useOthers();
+  const currentUser = useSelf();
+  const editorRef = useRef<any>(null);
 
   const preprocessContent = (content: string) => {
     // Replace Markdown bold formatting with Tiptap bold markup
@@ -214,9 +226,72 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
     }
   }, [selectedRange]);
 
-  // Update editor props
+  // Add storage hook to sync content
+  const content = useStorage((root) => root.content);
+
+  // Create the mutation outside of any conditions
+  const updateContent = useLiveblocksMutation(
+    ({ storage }, newContent: string) => {
+      try {
+        storage?.set("content", newContent);
+      } catch (error) {
+        console.error("Failed to update content:", error);
+        toast.error("Failed to sync content");
+      }
+    },
+    []
+  );
+
+  // Check if content is undefined (loading state)
+  if (content === undefined) {
+    return <div>Loading...</div>;
+  }
+
+  // Add a loading state for initial content
+  const [isInitialContentSet, setIsInitialContentSet] = useState(false);
+
+  // Update the cursor update handler
+  const updateCursor = useCallback(() => {
+    if (!editorRef.current || !room) return;
+
+    const selection = editorRef.current.view.state.selection;
+    const { from } = selection;
+
+    const editorElement = editorRef.current.view.dom;
+    const editorRect = editorElement.getBoundingClientRect();
+    const pos = editorRef.current.view.coordsAtPos(from);
+
+    // Calculate position relative to viewport
+    const x = pos.left - editorRect.left + window.scrollX;
+    const y = pos.top - editorRect.top + window.scrollY;
+
+    room.updatePresence({
+      cursor: {
+        x,
+        y,
+      },
+      selection: {
+        from,
+        to: selection.to,
+      },
+    });
+  }, [room]);
+
+  // Update the liveblocks extension configuration
+  const liveblocks = useLiveblocksExtension({
+    field: chatId as string,
+    offlineSupport_experimental: true,
+    collaborative: true,
+    sync: {
+      defaultSelection: true,
+      defaultCursor: true,
+    },
+  });
+
+  // Update the editor configuration
   const editor = useEditor({
     extensions: [
+      liveblocks,
       StarterKit.configure({
         heading: false,
         paragraph: {
@@ -260,13 +335,54 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
         touchend: handleWordSelection,
       },
     },
-    content: savedContent || "",
+    content: content || "<p></p>",
     onUpdate: ({ editor }) => {
-      const content = editor.getHTML();
-      onChange(content);
-      debouncedSave(content);
+      const newContent = editor.getHTML();
+      if (isInitialContentSet) {
+        // Only update after initial content is set
+        updateContent(newContent);
+        onChange(newContent);
+        debouncedSave(newContent);
+      }
     },
   });
+
+  // Effect to handle initial content
+  useEffect(() => {
+    if (content !== undefined && !isInitialContentSet) {
+      setIsInitialContentSet(true);
+    }
+  }, [content]);
+
+  // Update editorRef when editor instance changes
+  useEffect(() => {
+    if (editor) {
+      editorRef.current = editor;
+    }
+  }, [editor]);
+
+  // Update the cursor effect to use editorRef
+  useEffect(() => {
+    if (!editorRef.current || !room) return;
+
+    const handleSelectionUpdate = () => {
+      updateCursor();
+    };
+
+    const handleScroll = () => {
+      updateCursor();
+    };
+
+    editorRef.current.on("selectionUpdate", handleSelectionUpdate);
+    window.addEventListener("scroll", handleScroll);
+
+    return () => {
+      if (editorRef.current) {
+        editorRef.current.off("selectionUpdate", handleSelectionUpdate);
+      }
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, [room, updateCursor]);
 
   useEffect(() => {
     if (editor && savedContent && !editor.getText().trim()) {
@@ -376,7 +492,22 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
 
   // Update the editor styles for more compact formatting
   const editorStyles = `
-   
+    .ProseMirror {
+      > * + * {
+        margin-top: 0.75em;
+      }
+    }
+
+    /* Override default selection color */
+    .ProseMirror ::selection {
+      background: var(--selection-color, #b4d5fe);
+      color: inherit;
+    }
+
+    /* Dark mode selection color */
+    .dark .ProseMirror ::selection {
+      background: var(--selection-color, #2d5a9c);
+    }
   `;
 
   // Add the styles to the document
@@ -552,6 +683,117 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
     };
   }, [editor, updateAIButtonPosition]);
 
+  // Add ThreadOverlay component for comments
+  const ThreadOverlay = () => {
+    const { threads } = useThreads({ query: { resolved: false } });
+
+    return (
+      <>
+        <FloatingThreads
+          editor={editor}
+          threads={threads}
+          className="w-[350px] block md:hidden"
+        />
+        <AnchoredThreads
+          editor={editor}
+          threads={threads}
+          className="w-[350px] hidden md:block"
+        />
+      </>
+    );
+  };
+
+  // Add cursor overlay component
+  const CursorOverlay = () => {
+    const editorElement = editor?.view?.dom;
+    const editorRect = editorElement?.getBoundingClientRect();
+
+    return (
+      <div className="pointer-events-none absolute inset-0">
+        {others.map(({ connectionId, presence, info }) => {
+          if (!presence.cursor || !editorRect) return null;
+
+          // Calculate position relative to viewport
+          const x = presence.cursor.x + editorRect.left - window.scrollX;
+          const y = presence.cursor.y + editorRect.top - window.scrollY;
+
+          // Generate a random color for the user if they don't have one
+          const userColor = info?.color || getRandomColor();
+
+          return (
+            <div
+              key={connectionId}
+              className="absolute"
+              style={{
+                left: x,
+                top: y,
+                transform: "translateY(-100%)",
+                transition: "all 100ms ease-out",
+                zIndex: 50,
+              }}
+            >
+              <div
+                className="w-0.5 h-5 relative"
+                style={{
+                  backgroundColor: userColor,
+                  transition: "all 100ms ease-out",
+                }}
+              >
+                <HoverCard className="cursor-pointer">
+                  <HoverCardTrigger asChild>
+                    <div
+                      className="absolute -top-2 -left-2 flex items-center gap-2 px-3 py-1.5 rounded-full text-xs text-white whitespace-nowrap transform -translate-y-full"
+                      style={{
+                        backgroundColor: userColor,
+                        transition: "all 100ms ease-out",
+                      }}
+                    >
+                      <Avatar className="h-5 w-5 cursor-pointer">
+                        <AvatarImage src={info?.avatar} />
+                        <AvatarFallback className="text-[10px]">
+                          {info?.name?.slice(0, 2).toUpperCase() || "AN"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span>{info?.name || "Anonymous"}</span>
+                    </div>
+                  </HoverCardTrigger>
+                  <HoverCardContent className="w-60" side="top">
+                    <div className="flex justify-between space-x-4">
+                      <Avatar>
+                        <AvatarImage src={info?.avatar} />
+                        <AvatarFallback>
+                          {info?.name?.slice(0, 2).toUpperCase() || "AN"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="space-y-1">
+                        <h4 className="text-sm font-semibold">
+                          {info?.name || "Anonymous"}
+                        </h4>
+                        <p className="text-sm text-muted-foreground">
+                          Active Collaborator
+                        </p>
+                      </div>
+                    </div>
+                  </HoverCardContent>
+                </HoverCard>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // Add this effect to handle window resize
+  useEffect(() => {
+    const handleResize = () => {
+      updateCursor();
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [updateCursor]);
+
   if (!editor) {
     return null;
   }
@@ -582,6 +824,79 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
       {children}
     </button>
   );
+
+  const ActiveUsers = () => {
+    const others = useOthers();
+    const currentUser = useSelf();
+
+    return (
+      <div className="fixed top-2 right-4 flex items-center gap-1 bg-background/95 p-2 rounded-full border shadow-sm">
+        {/* Show current user first */}
+        {currentUser && (
+          <HoverCard>
+            <HoverCardTrigger asChild>
+              <Avatar className="h-8 w-8 border-2 border-primary">
+                <AvatarImage src={currentUser.info?.avatar} />
+                <AvatarFallback>
+                  {currentUser.info?.name?.slice(0, 2).toUpperCase() || "ME"}
+                </AvatarFallback>
+              </Avatar>
+            </HoverCardTrigger>
+            <HoverCardContent className="w-60">
+              <div className="flex justify-between space-x-4">
+                <Avatar>
+                  <AvatarImage src={currentUser.info?.avatar} />
+                  <AvatarFallback>
+                    {currentUser.info?.name?.slice(0, 2).toUpperCase() || "ME"}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="space-y-1">
+                  <h4 className="text-sm font-semibold">
+                    {currentUser.info?.name || "Me"} (You)
+                  </h4>
+                  <p className="text-sm text-muted-foreground">
+                    Currently Active
+                  </p>
+                </div>
+              </div>
+            </HoverCardContent>
+          </HoverCard>
+        )}
+
+        {/* Show other active users */}
+        {others.map(({ connectionId, info }) => (
+          <HoverCard key={connectionId}>
+            <HoverCardTrigger asChild>
+              <Avatar className="h-8 w-8 border-2 border-green-500">
+                <AvatarImage src={info?.avatar} />
+                <AvatarFallback>
+                  {info?.name?.slice(0, 2).toUpperCase() || "AN"}
+                </AvatarFallback>
+              </Avatar>
+            </HoverCardTrigger>
+            <HoverCardContent className="w-60">
+              <div className="flex justify-between space-x-4">
+                <Avatar>
+                  <AvatarImage src={info?.avatar} />
+                  <AvatarFallback>
+                    {info?.name?.slice(0, 2).toUpperCase() || "AN"}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="space-y-1">
+                  <h4 className="text-sm font-semibold">
+                    {info?.name || "Anonymous"}
+                  </h4>
+                  <p className="text-sm text-muted-foreground">
+                    Currently Active
+                  </p>
+                </div>
+              </div>
+            </HoverCardContent>
+          </HoverCard>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <TooltipProvider>
@@ -659,26 +974,14 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
               isActive={editor.isActive("bulletList")}
               title="Bullet List"
             >
-              <Image
-                src="/bullet-list.svg"
-                alt="Bullet list"
-                width={16}
-                height={16}
-                className="w-5 h-5"
-              />
+              <GoListUnordered />
             </MenuButton>
             <MenuButton
               onClick={() => editor.chain().focus().toggleOrderedList().run()}
               isActive={editor.isActive("orderedList")}
               title="Ordered List"
             >
-              <Image
-                src="/numbered-list.svg"
-                alt="Numbered list"
-                width={16}
-                height={16}
-                className="w-5 h-5"
-              />
+              <GoListOrdered />
             </MenuButton>
             <div className="w-px h-6 bg-gray-300 mx-1" />
             <MenuButton
@@ -735,8 +1038,13 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
             </MenuButton>
           </div>
         </div>
-        <div className="bg-card">
+        <div className="bg-card relative">
           <EditorContent editor={editor} />
+          <CursorOverlay />
+          <FloatingComposer editor={editor} style={{ width: 350 }} />
+          <ClientSideSuspense fallback={null}>
+            <ThreadOverlay />
+          </ClientSideSuspense>
         </div>
         <AnimatePresence>
           {isTextSelected && (
@@ -896,8 +1204,15 @@ const TextEditor = ({ editorContent, onChange }: TextEditorProps) => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <ActiveUsers />
     </TooltipProvider>
   );
 };
 
-export default TextEditor;
+export default function TextEditor() {
+  return (
+    <ClientSideSuspense fallback={<div>Loading...</div>}>
+      {() => <TextEditorContent />}
+    </ClientSideSuspense>
+  );
+}
