@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 // Create matchers for different routes that need protection
 const isChatRoute = createRouteMatcher(["/chats/:id(.*)"]);
 const isChatApiRoute = createRouteMatcher([
-  "/api/chat/:id(.*)",
+  // "/api/chat/:id(.*)",
   // "/api/collaborate/:id(.*)",
   // "/api/search(.*)"
 ]);

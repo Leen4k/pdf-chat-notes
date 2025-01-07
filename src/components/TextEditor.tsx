@@ -330,7 +330,7 @@ const TextEditorContent = () => {
         touchend: handleWordSelection,
       },
     },
-    content: "",  // Start with empty content
+    content: "", // Start with empty content
     onUpdate: ({ editor }) => {
       const newContent = editor.getHTML();
       if (isInitialContentSet) {

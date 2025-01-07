@@ -34,7 +34,8 @@ export const useChats = (isAuth: boolean) => {
       const response = await axios.patch("/api/chat/position", { updates });
       return response.data;
     },
-    onError: () => {
+    onError: (error) => {
+      console.log(error);
       toast.error("Failed to update chat order");
       queryClient.invalidateQueries({ queryKey: ["chats"] });
     },
