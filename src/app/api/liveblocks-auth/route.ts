@@ -19,7 +19,8 @@ export async function POST(request: NextRequest) {
   // Create a session with the Clerk user data
   const session = liveblocks.prepareSession(userId, {
     userInfo: {
-      name: user?.firstName + " " + user?.lastName || "Anonymous",
+      name:
+        (user?.firstName || "") + " " + (user?.lastName || "") || "Anonymous",
       avatar: user.imageUrl,
       color: getRandomColor(),
     },
