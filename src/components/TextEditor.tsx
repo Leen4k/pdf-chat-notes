@@ -93,14 +93,13 @@ const TextEditorContent = () => {
     return content.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
   };
 
-  const { data: savedContent } = useQuery({
-    queryKey: ["editorContent", chatId],
-    queryFn: async () => {
-      const response = await axios.get(`/api/editor?chatId=${chatId}`);
-      return response.data.data?.content || "";
-    },
-  });
+  // Modify the content storage hook
+  const content = useStorage((root) => root.content);
 
+  // Add loading state for storage
+  const isStorageLoading = useStorage((root) => root.content === undefined);
+
+  // Modify the save mutation to handle both local save and storage update
   const { mutate: saveContent } = useMutation({
     mutationFn: async (content: string) => {
       await axios.post("/api/editor", {
@@ -113,6 +112,7 @@ const TextEditorContent = () => {
     },
   });
 
+  // Update the debounced save to handle both local and remote saves
   const debouncedSave = useMemo(
     () =>
       debounce((content: string) => {
@@ -221,9 +221,6 @@ const TextEditorContent = () => {
     }
   }, [selectedRange]);
 
-  // Add storage hook to sync content
-  const content = useStorage((root) => root.content);
-
   // Create the mutation outside of any conditions
   const updateContent = useLiveblocksMutation(
     ({ storage }, newContent: string) => {
@@ -283,7 +280,7 @@ const TextEditorContent = () => {
     },
   });
 
-  // Update the editor configuration
+  // Modify the editor configuration
   const editor = useEditor({
     extensions: [
       liveblocks,
@@ -342,7 +339,7 @@ const TextEditorContent = () => {
 
   // Update the effect that handles initial content
   useEffect(() => {
-    if (editor && content && !isInitialContentSet) {
+    if (editor && content !== undefined && !isInitialContentSet) {
       editor.commands.setContent(content);
       setIsInitialContentSet(true);
     }
@@ -885,6 +882,15 @@ const TextEditorContent = () => {
       </div>
     );
   };
+
+  // Show loading state while storage is initializing
+  if (isStorageLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <TooltipProvider>

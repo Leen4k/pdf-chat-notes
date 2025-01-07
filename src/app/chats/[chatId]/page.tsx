@@ -11,46 +11,28 @@ import { RoomProvider } from "@/liveblocks.config";
 import { editorContent } from "@/lib/db/schema";
 import axios from "axios";
 import { ClientSideSuspense } from "@liveblocks/react";
+import { Loader2, Users, X } from "lucide-react";
+import { getRandomColor } from "@/lib/utils";
 
 // Ensure PDF.js worker is loaded
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/legacy/build/pdf.worker.min.mjs`;
 
-// Add a function to generate random colors
-const getRandomColor = () => {
-  const colors = [
-    "#E57373",
-    "#F06292",
-    "#BA68C8",
-    "#9575CD",
-    "#7986CB",
-    "#64B5F6",
-    "#4FC3F7",
-    "#4DD0E1",
-    "#4DB6AC",
-    "#81C784",
-    "#AED581",
-    "#DCE775",
-  ];
-  return colors[Math.floor(Math.random() * colors.length)];
-};
-
 const PDFViewer = () => {
   const { chatId: id } = useParams();
+  const searchParams = useSearchParams();
+  const pdfUrl = searchParams.get("pdfUrl");
 
-  if (!id) {
-    return <div>Invalid chat ID</div>;
-  }
-
-  const pdfUrl = useSearchParams().get("pdfUrl");
+  const [isInitializing, setIsInitializing] = useState(true);
+  const [initialContent, setInitialContent] = useState("");
   const [numPages, setNumPages] = useState<number>();
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [error, setError] = useState<string | null>(null);
 
-  // Update the initial content loading
-  const [initialContent, setInitialContent] = useState("");
-
+  // Load initial content only once
   useEffect(() => {
     const loadInitialContent = async () => {
+      if (!id) return;
+
       try {
         const response = await axios.get(`/api/editor?chatId=${id}`);
         const content = response.data.data?.content || "";
@@ -58,12 +40,12 @@ const PDFViewer = () => {
       } catch (error) {
         console.error("Failed to load initial content:", error);
         setInitialContent("");
+      } finally {
+        setIsInitializing(false);
       }
     };
 
-    if (id) {
-      loadInitialContent();
-    }
+    loadInitialContent();
   }, [id]);
 
   const handleLoadSuccess = ({ numPages }: { numPages: number }) => {
@@ -76,9 +58,21 @@ const PDFViewer = () => {
     setError("Failed to load PDF. Check console for details.");
   };
 
+  if (!id) {
+    return <div>Invalid chat ID</div>;
+  }
+
+  if (isInitializing) {
+    return (
+      <div className="flex items-center justify-center h-screen w-screen flex-1">
+        <Loader2 className="h-8 w-8 animate-spin m-auto" />
+      </div>
+    );
+  }
+
   return (
     <RoomProvider
-      id={id as string}
+      id={id}
       initialPresence={{
         cursor: null,
         isTyping: false,
@@ -90,6 +84,7 @@ const PDFViewer = () => {
       userInfo={{
         name: `User ${Math.floor(Math.random() * 10000)}`,
         color: getRandomColor(),
+        avatar: `https://api.dicebear.com/6.x/avataaars/svg?seed=${Math.random()}`,
       }}
     >
       <div className="grid xl:grid-cols-2">
