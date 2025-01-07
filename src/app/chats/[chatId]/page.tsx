@@ -45,20 +45,19 @@ const PDFViewer = () => {
   const [numPages, setNumPages] = useState<number>();
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [error, setError] = useState<string | null>(null);
-  const [text, setText] = useState<string>("");
 
-  // Add loading state for initial content
-  const [initialContent, setInitialContent] = useState("<p></p>");
+  // Update the initial content loading
+  const [initialContent, setInitialContent] = useState("");
 
-  // Load initial content
   useEffect(() => {
     const loadInitialContent = async () => {
       try {
         const response = await axios.get(`/api/editor?chatId=${id}`);
-        setInitialContent(response.data.data?.content || "<p></p>");
+        const content = response.data.data?.content || "";
+        setInitialContent(content);
       } catch (error) {
         console.error("Failed to load initial content:", error);
-        setInitialContent("<p></p>");
+        setInitialContent("");
       }
     };
 
@@ -90,14 +89,14 @@ const PDFViewer = () => {
       }}
       userInfo={{
         name: `User ${Math.floor(Math.random() * 10000)}`,
-        color: "#AED581",
+        color: getRandomColor(),
       }}
     >
       <div className="grid xl:grid-cols-2">
         {/* Text Editor Column */}
         <div className="w-full p-4 overflow-y-auto rounded-lg h-screen flex-1">
           <ClientSideSuspense fallback={<div>Loading…</div>}>
-            <TextEditor editorContent={text} onChange={setText} />
+            {() => <TextEditor />}
           </ClientSideSuspense>
         </div>
 

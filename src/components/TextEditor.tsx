@@ -79,11 +79,6 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 
-interface TextEditorProps {
-  editorContent: string;
-  onChange: (content: string) => void;
-}
-
 const TextEditorContent = () => {
   const { chatId } = useParams();
   const queryClient = useQueryClient();
@@ -335,24 +330,23 @@ const TextEditorContent = () => {
         touchend: handleWordSelection,
       },
     },
-    content: content || "<p></p>",
+    content: "",  // Start with empty content
     onUpdate: ({ editor }) => {
       const newContent = editor.getHTML();
       if (isInitialContentSet) {
-        // Only update after initial content is set
         updateContent(newContent);
-        onChange(newContent);
         debouncedSave(newContent);
       }
     },
   });
 
-  // Effect to handle initial content
+  // Update the effect that handles initial content
   useEffect(() => {
-    if (content !== undefined && !isInitialContentSet) {
+    if (editor && content && !isInitialContentSet) {
+      editor.commands.setContent(content);
       setIsInitialContentSet(true);
     }
-  }, [content]);
+  }, [editor, content, isInitialContentSet]);
 
   // Update editorRef when editor instance changes
   useEffect(() => {
@@ -383,12 +377,6 @@ const TextEditorContent = () => {
       window.removeEventListener("scroll", handleScroll);
     };
   }, [room, updateCursor]);
-
-  useEffect(() => {
-    if (editor && savedContent && !editor.getText().trim()) {
-      editor.commands.setContent(savedContent);
-    }
-  }, [editor, savedContent]);
 
   useEffect(() => {
     return () => {
