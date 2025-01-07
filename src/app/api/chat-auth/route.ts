@@ -6,20 +6,32 @@ import { eq, and } from "drizzle-orm";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const chatId = parseInt(searchParams.get("chatId") || "");
+  const chatId = searchParams.get("chatId");
   const userId = searchParams.get("userId");
 
+  // Add more detailed error logging
+  console.log("Auth check requested for:", { chatId, userId });
+
   if (!chatId || !userId) {
+    console.log("Missing parameters:", { chatId, userId });
     return new NextResponse("Missing required parameters", { status: 400 });
   }
 
   try {
+    const parsedChatId = parseInt(chatId);
+    if (isNaN(parsedChatId)) {
+      console.log("Invalid chatId:", chatId);
+      return new NextResponse("Invalid chat ID", { status: 400 });
+    }
+
     // Get the chat details
     const [chatDetails] = await db
       .select()
       .from(chats)
-      .where(eq(chats.id, chatId))
+      .where(eq(chats.id, parsedChatId))
       .limit(1);
+
+    console.log("Chat details found:", chatDetails);
 
     if (!chatDetails) {
       return new NextResponse("Chat not found", { status: 404 });
@@ -41,7 +53,7 @@ export async function GET(request: Request) {
       .from(collaborations)
       .where(
         and(
-          eq(collaborations.chatId, chatId),
+          eq(collaborations.chatId, parsedChatId),
           eq(collaborations.userId, userId),
           eq(collaborations.isActive, true)
         )
