@@ -62,7 +62,7 @@ import {
   FloatingThreads,
   AnchoredThreads,
 } from "@liveblocks/react-tiptap";
-import { ClientSideSuspense, useThreads } from "@liveblocks/react/suspense";
+import { ClientSideSuspense, useThreads } from "@liveblocks/react";
 import {
   useRoom,
   useOthers,
@@ -71,27 +71,20 @@ import {
   useMutation as useLiveblocksMutation,
 } from "@/liveblocks.config";
 import { GoListUnordered, GoListOrdered } from "react-icons/go";
+import { RoomProvider } from "@liveblocks/react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 
 interface TextEditorProps {
   editorContent: string;
   onChange: (content: string) => void;
 }
 
-const TextEditor = (props: TextEditorProps) => {
-  return (
-    <ClientSideSuspense
-      fallback={
-        <div className="w-full h-screen flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
-      }
-    >
-      {() => <EditorWithLiveblocks {...props} />}
-    </ClientSideSuspense>
-  );
-};
-
-const EditorWithLiveblocks = ({ editorContent, onChange }: TextEditorProps) => {
+const TextEditorContent = () => {
   const { chatId } = useParams();
   const queryClient = useQueryClient();
   const { theme } = useTheme();
@@ -236,11 +229,11 @@ const EditorWithLiveblocks = ({ editorContent, onChange }: TextEditorProps) => {
   // Add storage hook to sync content
   const content = useStorage((root) => root.content);
 
-  // Add Liveblocks mutation to update content with error handling
+  // Create the mutation outside of any conditions
   const updateContent = useLiveblocksMutation(
     ({ storage }, newContent: string) => {
       try {
-        storage.set("content", newContent);
+        storage?.set("content", newContent);
       } catch (error) {
         console.error("Failed to update content:", error);
         toast.error("Failed to sync content");
@@ -248,6 +241,11 @@ const EditorWithLiveblocks = ({ editorContent, onChange }: TextEditorProps) => {
     },
     []
   );
+
+  // Check if content is undefined (loading state)
+  if (content === undefined) {
+    return <div>Loading...</div>;
+  }
 
   // Add a loading state for initial content
   const [isInitialContentSet, setIsInitialContentSet] = useState(false);
@@ -283,12 +281,6 @@ const EditorWithLiveblocks = ({ editorContent, onChange }: TextEditorProps) => {
   const liveblocks = useLiveblocksExtension({
     field: chatId as string,
     offlineSupport_experimental: true,
-    user: {
-      info: {
-        name: currentUser?.info?.name || "Anonymous",
-        color: currentUser?.info?.color || "#000000",
-      },
-    },
     collaborative: true,
     sync: {
       defaultSelection: true,
@@ -343,7 +335,7 @@ const EditorWithLiveblocks = ({ editorContent, onChange }: TextEditorProps) => {
         touchend: handleWordSelection,
       },
     },
-    content: content || editorContent || "<p></p>",
+    content: content || "<p></p>",
     onUpdate: ({ editor }) => {
       const newContent = editor.getHTML();
       if (isInitialContentSet) {
@@ -500,7 +492,22 @@ const EditorWithLiveblocks = ({ editorContent, onChange }: TextEditorProps) => {
 
   // Update the editor styles for more compact formatting
   const editorStyles = `
-   
+    .ProseMirror {
+      > * + * {
+        margin-top: 0.75em;
+      }
+    }
+
+    /* Override default selection color */
+    .ProseMirror ::selection {
+      background: var(--selection-color, #b4d5fe);
+      color: inherit;
+    }
+
+    /* Dark mode selection color */
+    .dark .ProseMirror ::selection {
+      background: var(--selection-color, #2d5a9c);
+    }
   `;
 
   // Add the styles to the document
@@ -710,6 +717,9 @@ const EditorWithLiveblocks = ({ editorContent, onChange }: TextEditorProps) => {
           const x = presence.cursor.x + editorRect.left - window.scrollX;
           const y = presence.cursor.y + editorRect.top - window.scrollY;
 
+          // Generate a random color for the user if they don't have one
+          const userColor = info?.color || getRandomColor();
+
           return (
             <div
               key={connectionId}
@@ -725,19 +735,47 @@ const EditorWithLiveblocks = ({ editorContent, onChange }: TextEditorProps) => {
               <div
                 className="w-0.5 h-5 relative"
                 style={{
-                  backgroundColor: info?.color || "#000",
+                  backgroundColor: userColor,
                   transition: "all 100ms ease-out",
                 }}
               >
-                <div
-                  className="absolute top-0 left-0 px-2 py-1 rounded text-xs text-white whitespace-nowrap transform -translate-y-full"
-                  style={{
-                    backgroundColor: info?.color || "#000",
-                    transition: "all 100ms ease-out",
-                  }}
-                >
-                  {info?.name || "Anonymous"}
-                </div>
+                <HoverCard className="cursor-pointer">
+                  <HoverCardTrigger asChild>
+                    <div
+                      className="absolute -top-2 -left-2 flex items-center gap-2 px-3 py-1.5 rounded-full text-xs text-white whitespace-nowrap transform -translate-y-full"
+                      style={{
+                        backgroundColor: userColor,
+                        transition: "all 100ms ease-out",
+                      }}
+                    >
+                      <Avatar className="h-5 w-5 cursor-pointer">
+                        <AvatarImage src={info?.avatar} />
+                        <AvatarFallback className="text-[10px]">
+                          {info?.name?.slice(0, 2).toUpperCase() || "AN"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span>{info?.name || "Anonymous"}</span>
+                    </div>
+                  </HoverCardTrigger>
+                  <HoverCardContent className="w-60" side="top">
+                    <div className="flex justify-between space-x-4">
+                      <Avatar>
+                        <AvatarImage src={info?.avatar} />
+                        <AvatarFallback>
+                          {info?.name?.slice(0, 2).toUpperCase() || "AN"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="space-y-1">
+                        <h4 className="text-sm font-semibold">
+                          {info?.name || "Anonymous"}
+                        </h4>
+                        <p className="text-sm text-muted-foreground">
+                          Active Collaborator
+                        </p>
+                      </div>
+                    </div>
+                  </HoverCardContent>
+                </HoverCard>
               </div>
             </div>
           );
@@ -786,6 +824,79 @@ const EditorWithLiveblocks = ({ editorContent, onChange }: TextEditorProps) => {
       {children}
     </button>
   );
+
+  const ActiveUsers = () => {
+    const others = useOthers();
+    const currentUser = useSelf();
+
+    return (
+      <div className="fixed top-2 right-4 flex items-center gap-1 bg-background/95 p-2 rounded-full border shadow-sm">
+        {/* Show current user first */}
+        {currentUser && (
+          <HoverCard>
+            <HoverCardTrigger asChild>
+              <Avatar className="h-8 w-8 border-2 border-primary">
+                <AvatarImage src={currentUser.info?.avatar} />
+                <AvatarFallback>
+                  {currentUser.info?.name?.slice(0, 2).toUpperCase() || "ME"}
+                </AvatarFallback>
+              </Avatar>
+            </HoverCardTrigger>
+            <HoverCardContent className="w-60">
+              <div className="flex justify-between space-x-4">
+                <Avatar>
+                  <AvatarImage src={currentUser.info?.avatar} />
+                  <AvatarFallback>
+                    {currentUser.info?.name?.slice(0, 2).toUpperCase() || "ME"}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="space-y-1">
+                  <h4 className="text-sm font-semibold">
+                    {currentUser.info?.name || "Me"} (You)
+                  </h4>
+                  <p className="text-sm text-muted-foreground">
+                    Currently Active
+                  </p>
+                </div>
+              </div>
+            </HoverCardContent>
+          </HoverCard>
+        )}
+
+        {/* Show other active users */}
+        {others.map(({ connectionId, info }) => (
+          <HoverCard key={connectionId}>
+            <HoverCardTrigger asChild>
+              <Avatar className="h-8 w-8 border-2 border-green-500">
+                <AvatarImage src={info?.avatar} />
+                <AvatarFallback>
+                  {info?.name?.slice(0, 2).toUpperCase() || "AN"}
+                </AvatarFallback>
+              </Avatar>
+            </HoverCardTrigger>
+            <HoverCardContent className="w-60">
+              <div className="flex justify-between space-x-4">
+                <Avatar>
+                  <AvatarImage src={info?.avatar} />
+                  <AvatarFallback>
+                    {info?.name?.slice(0, 2).toUpperCase() || "AN"}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="space-y-1">
+                  <h4 className="text-sm font-semibold">
+                    {info?.name || "Anonymous"}
+                  </h4>
+                  <p className="text-sm text-muted-foreground">
+                    Currently Active
+                  </p>
+                </div>
+              </div>
+            </HoverCardContent>
+          </HoverCard>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <TooltipProvider>
@@ -1093,8 +1204,15 @@ const EditorWithLiveblocks = ({ editorContent, onChange }: TextEditorProps) => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <ActiveUsers />
     </TooltipProvider>
   );
 };
 
-export default TextEditor;
+export default function TextEditor() {
+  return (
+    <ClientSideSuspense fallback={<div>Loading...</div>}>
+      {() => <TextEditorContent />}
+    </ClientSideSuspense>
+  );
+}

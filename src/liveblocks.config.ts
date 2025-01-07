@@ -6,6 +6,11 @@ const client = createClient({
   authEndpoint: "/api/liveblocks-auth",
 });
 
+type Storage = {
+  content: string;
+  version: number;
+};
+
 // Create room context
 export const {
   RoomProvider,
@@ -29,7 +34,20 @@ export const {
   useBatch,
   useStatus,
   useLostConnectionListener,
-} = createRoomContext(client);
+} = createRoomContext<{
+  storage: Storage;
+  presence: {
+    cursor: { x: number; y: number } | null;
+    isTyping?: boolean;
+  };
+  userMeta: {
+    id: string;
+    info: {
+      name: string;
+      avatar?: string;
+    };
+  };
+}>(client);
 
 // Add TypeScript types for your Liveblocks data
 declare global {
@@ -37,6 +55,7 @@ declare global {
     // Presence represents the public state of a user in the room
     Presence: {
       cursor: { x: number; y: number } | null;
+      isTyping?: boolean;
     };
 
     // Storage represents the persistent data shared by all users
@@ -51,6 +70,7 @@ declare global {
       info: {
         name: string;
         avatar?: string;
+        color?: string;
       };
     };
 

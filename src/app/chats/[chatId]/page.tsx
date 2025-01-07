@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { RoomProvider } from "@/liveblocks.config";
 import { editorContent } from "@/lib/db/schema";
 import axios from "axios";
+import { ClientSideSuspense } from "@liveblocks/react";
 
 // Ensure PDF.js worker is loaded
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/legacy/build/pdf.worker.min.mjs`;
@@ -81,10 +82,6 @@ const PDFViewer = () => {
       id={id as string}
       initialPresence={{
         cursor: null,
-        selection: {
-          from: 0,
-          to: 0,
-        },
         isTyping: false,
       }}
       initialStorage={{
@@ -93,57 +90,61 @@ const PDFViewer = () => {
       }}
       userInfo={{
         name: `User ${Math.floor(Math.random() * 10000)}`,
-        color: getRandomColor(),
+        color: "#AED581",
       }}
     >
       <div className="grid xl:grid-cols-2">
         {/* Text Editor Column */}
         <div className="w-full p-4 overflow-y-auto rounded-lg h-screen flex-1">
-          <TextEditor editorContent={text} onChange={setText} />
+          <ClientSideSuspense fallback={<div>Loading…</div>}>
+            <TextEditor editorContent={text} onChange={setText} />
+          </ClientSideSuspense>
         </div>
 
         {/* PDF Viewer Column */}
         <div className="w-full p-4 overflow-y-auto h-screen">
           {error && <div className="text-red-500 p-4">{error}</div>}
 
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={pdfUrl}
-              initial={{ x: 50 }}
-              animate={{ x: 0 }}
-              exit={{ x: -50 }}
-              transition={{ duration: 0.2 }}
-            >
-              <Document
-                file={(pdfUrl as string) || ""}
-                onLoadSuccess={handleLoadSuccess}
-                onLoadError={handleLoadError}
-                loading={
-                  <div className="space-y-4">
-                    <Skeleton className="h-[842px] w-[595px] mx-auto" />{" "}
-                    {/* A4 dimensions in pixels */}
-                    <Skeleton className="h-[842px] w-[595px] mx-auto" />
-                  </div>
-                }
-                className="space-y-4"
+          <div className="flex justify-center w-full">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={pdfUrl}
+                initial={{ x: 50 }}
+                animate={{ x: 0 }}
+                exit={{ x: -50 }}
+                transition={{ duration: 0.2 }}
+                className="w-[90%]"
               >
-                {numPages && (
-                  <>
-                    {[...Array(numPages)].map((_, index) => (
-                      <Page
-                        key={`page_${index + 1}`}
-                        pageNumber={index + 1}
-                        renderTextLayer={true}
-                        renderAnnotationLayer={true}
-                        className="shadow-md mb-4 mx-auto"
-                        width={595} // A4 width in pixels
-                      />
-                    ))}
-                  </>
-                )}
-              </Document>
-            </motion.div>
-          </AnimatePresence>
+                <Document
+                  file={(pdfUrl as string) || ""}
+                  onLoadSuccess={handleLoadSuccess}
+                  onLoadError={handleLoadError}
+                  loading={
+                    <div className="space-y-4">
+                      <Skeleton className="h-[842px] w-full mx-auto" />
+                      <Skeleton className="h-[842px] w-full mx-auto" />
+                    </div>
+                  }
+                  className="space-y-4"
+                >
+                  {numPages && (
+                    <>
+                      {[...Array(numPages)].map((_, index) => (
+                        <Page
+                          key={`page_${index + 1}`}
+                          pageNumber={index + 1}
+                          renderTextLayer={true}
+                          renderAnnotationLayer={true}
+                          className="shadow-md mb-4 mx-auto"
+                          width={595}
+                        />
+                      ))}
+                    </>
+                  )}
+                </Document>
+              </motion.div>
+            </AnimatePresence>
+          </div>
         </div>
       </div>
     </RoomProvider>

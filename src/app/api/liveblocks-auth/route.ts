@@ -1,6 +1,7 @@
 import { Liveblocks } from "@liveblocks/node";
 import { NextRequest } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
+import { getRandomColor } from "@/lib/utils";
 
 const liveblocks = new Liveblocks({
   secret: process.env.LIVEBLOCKS_SECRET_KEY!,
@@ -20,6 +21,7 @@ export async function POST(request: NextRequest) {
     userInfo: {
       name: user.firstName + " " + user.lastName || "Anonymous",
       avatar: user.imageUrl,
+      color: getRandomColor(),
     },
   });
 
