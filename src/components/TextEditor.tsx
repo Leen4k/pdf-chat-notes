@@ -337,11 +337,15 @@ const TextEditorContent = () => {
     },
   });
 
+  // Add loading states
+  const [isLoading, setIsLoading] = useState(true);
+
   // Update the effect that handles initial content
   useEffect(() => {
     if (editor && content !== undefined && !isInitialContentSet) {
       editor.commands.setContent(content);
       setIsInitialContentSet(true);
+      setIsLoading(false);
     }
   }, [editor, content, isInitialContentSet]);
 
@@ -688,87 +692,6 @@ const TextEditorContent = () => {
     );
   };
 
-  // Add cursor overlay component
-  const CursorOverlay = () => {
-    const editorElement = editor?.view?.dom;
-    const editorRect = editorElement?.getBoundingClientRect();
-
-    return (
-      <div className="pointer-events-none absolute inset-0">
-        {others.map(({ connectionId, presence, info }) => {
-          if (!presence.cursor || !editorRect) return null;
-
-          // Calculate position relative to viewport
-          const x = presence.cursor.x + editorRect.left - window.scrollX;
-          const y = presence.cursor.y + editorRect.top - window.scrollY;
-
-          // Generate a random color for the user if they don't have one
-          const userColor = info?.color || getRandomColor();
-
-          return (
-            <div
-              key={connectionId}
-              className="absolute"
-              style={{
-                left: x,
-                top: y,
-                transform: "translateY(-100%)",
-                transition: "all 100ms ease-out",
-                zIndex: 50,
-              }}
-            >
-              <div
-                className="w-0.5 h-5 relative"
-                style={{
-                  backgroundColor: userColor,
-                  transition: "all 100ms ease-out",
-                }}
-              >
-                <HoverCard className="cursor-pointer">
-                  <HoverCardTrigger asChild>
-                    <div
-                      className="absolute -top-2 -left-2 flex items-center gap-2 px-3 py-1.5 rounded-full text-xs text-white whitespace-nowrap transform -translate-y-full"
-                      style={{
-                        backgroundColor: userColor,
-                        transition: "all 100ms ease-out",
-                      }}
-                    >
-                      <Avatar className="h-5 w-5 cursor-pointer">
-                        <AvatarImage src={info?.avatar} />
-                        <AvatarFallback className="text-[10px]">
-                          {info?.name?.slice(0, 2).toUpperCase() || "AN"}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span>{info?.name || "Anonymous"}</span>
-                    </div>
-                  </HoverCardTrigger>
-                  <HoverCardContent className="w-60" side="top">
-                    <div className="flex justify-between space-x-4">
-                      <Avatar>
-                        <AvatarImage src={info?.avatar} />
-                        <AvatarFallback>
-                          {info?.name?.slice(0, 2).toUpperCase() || "AN"}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="space-y-1">
-                        <h4 className="text-sm font-semibold">
-                          {info?.name || "Anonymous"}
-                        </h4>
-                        <p className="text-sm text-muted-foreground">
-                          Active Collaborator
-                        </p>
-                      </div>
-                    </div>
-                  </HoverCardContent>
-                </HoverCard>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
-
   // Add this effect to handle window resize
   useEffect(() => {
     const handleResize = () => {
@@ -778,6 +701,28 @@ const TextEditorContent = () => {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, [updateCursor]);
+
+  // Show loading state while storage is initializing or content is loading
+  if (isStorageLoading || isLoading) {
+    return (
+      <div className="w-full border rounded-lg shadow-sm bg-card min-h-screen">
+        <div className="border-b bg-background/95 dark:bg-card">
+          <div className="flex items-center gap-1 p-2 flex-wrap">
+            {/* Skeleton loading for toolbar buttons */}
+            {Array.from({ length: 12 }).map((_, i) => (
+              <div key={i} className="h-8 w-8 rounded bg-muted animate-pulse" />
+            ))}
+          </div>
+        </div>
+        <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
+          <div className="flex flex-col items-center gap-2">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">Loading document...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!editor) {
     return null;
@@ -882,15 +827,6 @@ const TextEditorContent = () => {
       </div>
     );
   };
-
-  // Show loading state while storage is initializing
-  if (isStorageLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
 
   return (
     <TooltipProvider>
@@ -1034,7 +970,6 @@ const TextEditorContent = () => {
         </div>
         <div className="bg-card relative">
           <EditorContent editor={editor} />
-          <CursorOverlay />
           <FloatingComposer editor={editor} style={{ width: 350 }} />
           <ClientSideSuspense fallback={null}>
             <ThreadOverlay />
