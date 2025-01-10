@@ -27,6 +27,7 @@ const PDFViewer = () => {
   const [numPages, setNumPages] = useState<number>();
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [error, setError] = useState<string | null>(null);
+  const [isLoadingContent, setIsLoadingContent] = useState(true);
 
   // Load initial content only once
   useEffect(() => {
@@ -34,6 +35,7 @@ const PDFViewer = () => {
       if (!id) return;
 
       try {
+        setIsLoadingContent(true);
         const response = await axios.get(`/api/editor?chatId=${id}`);
         const content = response.data.data?.content || "";
         setInitialContent(content);
@@ -41,6 +43,7 @@ const PDFViewer = () => {
         console.error("Failed to load initial content:", error);
         setInitialContent("");
       } finally {
+        setIsLoadingContent(false);
         setIsInitializing(false);
       }
     };
@@ -62,7 +65,7 @@ const PDFViewer = () => {
     return <div>Invalid chat ID</div>;
   }
 
-  if (isInitializing) {
+  if (isLoadingContent || isInitializing) {
     return (
       <div className="flex items-center justify-center h-screen w-screen flex-1">
         <Loader2 className="h-8 w-8 animate-spin m-auto" />
@@ -72,22 +75,23 @@ const PDFViewer = () => {
 
   return (
     <RoomProvider
-      id={id}
+      id={id as string}
       initialPresence={{
         cursor: null,
         isTyping: false,
       }}
       initialStorage={{
-        content: initialContent,
+        content: initialContent || "",
         version: 1,
       }}
+      key={id as string}
       userInfo={{
         name: `User ${Math.floor(Math.random() * 10000)}`,
         color: getRandomColor(),
         avatar: `https://api.dicebear.com/6.x/avataaars/svg?seed=${Math.random()}`,
       }}
     >
-      <div className="grid xl:grid-cols-2">
+      <div className="grid xl:grid-cols-2 flex-1 w-full">
         {/* Text Editor Column */}
         <div className="w-full p-4 overflow-y-auto rounded-lg h-screen flex-1">
           <ClientSideSuspense fallback={<div>Loading…</div>}>

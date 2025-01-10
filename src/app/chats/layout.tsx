@@ -31,7 +31,11 @@ export default function ChatsLayout({
       <div className="flex relative">
         <AppSidebar />
       </div>
-      <main className={gradientClass + " dark:opacity-80"}>
+      <main
+        className={
+          gradientClass + " dark:opacity-80 flex flex-col w-full flex-1"
+        }
+      >
         {" "}
         <SidebarTrigger variant="outline" className="ml-4 mt-4" />
         {children}
