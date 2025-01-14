@@ -179,9 +179,13 @@ const ChatGrid = ({
         items={chats.map((chat) => chat.id)}
         strategy={rectSortingStrategy}
       >
-        {chats.map((chat) => (
-          <ChatCard key={chat.id} chat={chat} />
-        ))}
+        {chats.length > 0 ? (
+          chats.map((chat) => <ChatCard key={chat.id} chat={chat} />)
+        ) : (
+          <span className="text-sm text-muted-foreground">
+            no chats available ❌
+          </span>
+        )}
       </SortableContext>
     </div>
   </DndContext>
