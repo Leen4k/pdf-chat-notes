@@ -3,12 +3,9 @@ import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import QueryWrapper from "@/lib/QueryWrapper";
 import { ThemeProvider } from "@/components/themes/ThemeProvider";
+import { constructMetadata } from "@/lib/utils";
 
 const figtree = Figtree({ subsets: ["latin"] });
-
-
-
-
 
 // Use the constructed metadata
 export const metadata = constructMetadata();
