@@ -58,7 +58,7 @@ export const metadata: Metadata = {
       "Create, manage, and collaborate on AI conversations in real-time. Upload PDFs, share insights, and work together seamlessly.",
     images: [
       {
-        url: "/og-image.png", // Make sure to add this image in public folder
+        url: "https://ai.nakie.xyz/og-image.png", // Make sure to add this image in public folder
         width: 1200,
         height: 630,
         alt: "AI Realtime Chats Preview",
@@ -70,7 +70,7 @@ export const metadata: Metadata = {
     title: "AI Realtime Chats - Collaborative AI Conversations",
     description:
       "Create, manage, and collaborate on AI conversations in real-time. Upload PDFs, share insights, and work together seamlessly.",
-    images: ["/twitter-image.png"], // Make sure to add this image in public folder
+    images: ["/og-image.png"], // Make sure to add this image in public folder
     creator: "@yourhandle",
     site: "@yourcompany",
   },
