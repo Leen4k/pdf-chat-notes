@@ -18,7 +18,7 @@ export default clerkMiddleware((auth, req) => {
   const userId = auth().userId;
 
   // Allow access to public routes even when not authenticated
-  const publicRoutes = ["/", "/sign-in", "/sign-up"];
+  const publicRoutes = ["/", "/sign-in", "/sign-up", "/og-image.png"];
   if (!userId && !publicRoutes.includes(req.nextUrl.pathname)) {
     // Redirect to sign-in page if not authenticated
     return NextResponse.redirect(new URL("/sign-in", req.url));
@@ -75,8 +75,5 @@ export default clerkMiddleware((auth, req) => {
 });
 
 export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(png|jpg|jpeg|gif|svg)).*)",
-    "/(api|trpc)(.*)",
-  ],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)", "/(api|trpc)(.*)"],
 };
