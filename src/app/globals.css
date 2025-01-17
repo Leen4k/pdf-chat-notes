@@ -239,10 +239,10 @@
   height: 100vh;
   background: radial-gradient(
     1200px circle at var(--x) var(--y),
-    rgba(236, 72, 153, 0.07), /* pink-500 with lower opacity */
-    rgba(239, 68, 68, 0.05), /* red-500 with lower opacity */
-    rgba(219, 39, 119, 0.03), /* pink-600 with lower opacity */
-    transparent 50%
+    rgba(236, 72, 153, 0.07),
+    /* pink-500 with lower opacity */ rgba(239, 68, 68, 0.05),
+    /* red-500 with lower opacity */ rgba(219, 39, 119, 0.03),
+    /* pink-600 with lower opacity */ transparent 50%
   );
   pointer-events: none;
   z-index: 0;
@@ -251,9 +251,20 @@
 .dark .spotlight-gradient {
   background: radial-gradient(
     1200px circle at var(--x) var(--y),
-    rgba(236, 72, 153, 0.05), /* pink-500 with lower opacity */
-    rgba(239, 68, 68, 0.04), /* red-500 with lower opacity */
-    rgba(219, 39, 119, 0.03), /* pink-600 with lower opacity */
-    transparent 50%
+    rgba(236, 72, 153, 0.05),
+    /* pink-500 with lower opacity */ rgba(239, 68, 68, 0.04),
+    /* red-500 with lower opacity */ rgba(219, 39, 119, 0.03),
+    /* pink-600 with lower opacity */ transparent 50%
   );
+}
+
+/* Add these styles to your existing CSS */
+.react-pdf__Page__textContent mark {
+  border-radius: 2px;
+  padding: 0 2px;
+  margin: -2px;
+}
+
+.react-pdf__Page__textContent {
+  user-select: text !important;
 }

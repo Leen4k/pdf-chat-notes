@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
@@ -7,6 +7,7 @@ import { useMutation } from "@tanstack/react-query";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import { Badge } from "./ui/badge";
+import debounce from "lodash/debounce";
 
 export function SearchDialog() {
   const [open, setOpen] = useState(false);
@@ -20,11 +21,33 @@ export function SearchDialog() {
     },
   });
 
+  const debouncedSearch = useMemo(
+    () =>
+      debounce((query: string) => {
+        if (query.trim()) {
+          searchMutation.mutate(query);
+        }
+      }, 300),
+    []
+  );
+
+  useEffect(() => {
+    return () => {
+      debouncedSearch.cancel();
+    };
+  }, [debouncedSearch]);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
       searchMutation.mutate(searchQuery);
     }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const query = e.target.value;
+    setSearchQuery(query);
+    debouncedSearch(query);
   };
 
   const hasResults = searchMutation.data?.results?.length > 0;
@@ -51,7 +74,7 @@ export function SearchDialog() {
               <Input
                 placeholder="Search in your PDFs..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={handleInputChange}
                 autoFocus
               />
               <Button
@@ -100,13 +123,18 @@ export function SearchDialog() {
                       router.push(
                         `/chats/${result.chatId}?pdfUrl=${encodeURIComponent(
                           result.fileUrl
-                        )}`
+                        )}&searchQuery=${encodeURIComponent(searchQuery)}`
                       );
                       setOpen(false);
                     }}
                   >
                     <div className="flex items-center justify-between">
-                      <h3 className="font-medium">{result.fileName}</h3>
+                      <h3
+                        className="font-medium"
+                        dangerouslySetInnerHTML={{
+                          __html: result.highlightedFileName,
+                        }}
+                      />
                       <Badge className="text-xs inline whitespace-nowrap">
                         {result.matches} matches
                       </Badge>

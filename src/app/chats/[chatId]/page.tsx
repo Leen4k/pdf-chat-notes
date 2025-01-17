@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import { useParams, useSearchParams } from "next/navigation";
 import "react-pdf/dist/esm/Page/TextLayer.css";
@@ -13,6 +13,7 @@ import axios from "axios";
 import { ClientSideSuspense } from "@liveblocks/react";
 import { Loader2, Users, X } from "lucide-react";
 import { getRandomColor } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 
 // Ensure PDF.js worker is loaded
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/legacy/build/pdf.worker.min.mjs`;
@@ -21,6 +22,8 @@ const PDFViewer = () => {
   const { chatId: id } = useParams();
   const searchParams = useSearchParams();
   const pdfUrl = searchParams.get("pdfUrl");
+  const searchQuery = searchParams.get("searchQuery");
+  const router = useRouter();
 
   const [isInitializing, setIsInitializing] = useState(true);
   const [initialContent, setInitialContent] = useState("");
@@ -28,6 +31,7 @@ const PDFViewer = () => {
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [error, setError] = useState<string | null>(null);
   const [isLoadingContent, setIsLoadingContent] = useState(true);
+  const [highlights, setHighlights] = useState<any[]>([]);
 
   // Load initial content only once
   useEffect(() => {
@@ -59,6 +63,22 @@ const PDFViewer = () => {
   const handleLoadError = (error: Error) => {
     console.error("PDF Load Error:", error);
     setError("Failed to load PDF. Check console for details.");
+  };
+
+  // Function to handle text highlighting
+  const highlightPattern = (text: string, pattern: string) => {
+    if (!pattern) return text;
+    const regex = new RegExp(`(${pattern})`, "gi");
+    return text.replace(
+      regex,
+      '<mark class="bg-yellow-200 dark:bg-yellow-800">$1</mark>'
+    );
+  };
+
+  // Custom text renderer for PDF pages
+  const textRenderer = (textItem: any) => {
+    if (!searchQuery) return textItem.str;
+    return highlightPattern(textItem.str, searchQuery);
   };
 
   if (!id) {
@@ -103,6 +123,25 @@ const PDFViewer = () => {
         <div className="w-full p-4 overflow-y-auto h-screen">
           {error && <div className="text-red-500 p-4">{error}</div>}
 
+          {/* Show search info if there's a search query */}
+          {searchQuery && (
+            <div className="mb-4 p-2 bg-muted rounded-lg flex items-center justify-between">
+              <span className="text-sm">
+                Showing results for: <strong>{searchQuery}</strong>
+              </span>
+              <button
+                onClick={() => {
+                  router.push(
+                    `/chats/${id}?pdfUrl=${encodeURIComponent(pdfUrl || "")}`
+                  );
+                }}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+
           <div className="flex justify-center w-full">
             <AnimatePresence mode="wait">
               <motion.div
@@ -135,6 +174,7 @@ const PDFViewer = () => {
                           renderAnnotationLayer={true}
                           className="shadow-md mb-4 mx-auto"
                           width={595}
+                          customTextRenderer={textRenderer}
                         />
                       ))}
                     </>
