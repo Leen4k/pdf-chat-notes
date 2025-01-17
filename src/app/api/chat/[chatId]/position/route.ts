@@ -3,7 +3,7 @@ import { chats } from "@/lib/db/schema";
 import { auth } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { invalidateCache } from "@/lib/redis";
+import { invalidateCache } from "@/lib/cache/redis";
 
 export async function PATCH(
   req: Request,
