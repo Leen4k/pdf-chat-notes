@@ -11,9 +11,10 @@ import { RoomProvider } from "@/liveblocks.config";
 import { editorContent } from "@/lib/db/schema";
 import axios from "axios";
 import { ClientSideSuspense } from "@liveblocks/react";
-import { Loader2, Users, X } from "lucide-react";
+import { Loader2, Users, X, FileText, ArrowUpCircle } from "lucide-react";
 import { getRandomColor } from "@/lib/utils";
 import { useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 // Ensure PDF.js worker is loaded
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/legacy/build/pdf.worker.min.mjs`;
@@ -113,76 +114,131 @@ const PDFViewer = () => {
     >
       <div className="grid xl:grid-cols-2 flex-1 w-full">
         {/* Text Editor Column */}
-        <div className="w-full p-4 overflow-y-auto rounded-lg h-screen flex-1">
+        <div className="w-full px-4 my-4 overflow-hidden overflow-y-auto rounded-lg h-screen flex-1">
           <ClientSideSuspense fallback={<div>Loading…</div>}>
             {() => <TextEditor />}
           </ClientSideSuspense>
         </div>
 
         {/* PDF Viewer Column */}
-        <div className="w-full p-4 overflow-y-auto h-screen">
+        <div className="w-full px-4 my-4 overflow-y-auto h-screen">
           {error && <div className="text-red-500 p-4">{error}</div>}
 
-          {/* Show search info if there's a search query */}
-          {searchQuery && (
-            <div className="mb-4 p-2 bg-muted rounded-lg flex items-center justify-between">
-              <span className="text-sm">
-                Showing results for: <strong>{searchQuery}</strong>
-              </span>
-              <button
-                onClick={() => {
-                  router.push(
-                    `/chats/${id}?pdfUrl=${encodeURIComponent(pdfUrl || "")}`
-                  );
-                }}
-                className="text-muted-foreground hover:text-foreground"
+          {!pdfUrl ? (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              className="h-full flex items-center justify-center"
+            >
+              <div
+                className={cn(
+                  "rounded-lg border-2 border-dashed",
+                  "p-12 text-center space-y-4",
+                  "max-w-md mx-auto"
+                )}
               >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          )}
-
-          <div className="flex justify-center w-full">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={pdfUrl}
-                initial={{ x: 50 }}
-                animate={{ x: 0 }}
-                exit={{ x: -50 }}
-                transition={{ duration: 0.2 }}
-                className="w-[90%]"
-              >
-                <Document
-                  file={(pdfUrl as string) || ""}
-                  onLoadSuccess={handleLoadSuccess}
-                  onLoadError={handleLoadError}
-                  loading={
-                    <div className="space-y-4">
-                      <Skeleton className="h-[842px] w-full mx-auto" />
-                      <Skeleton className="h-[842px] w-full mx-auto" />
-                    </div>
-                  }
-                  className="space-y-4"
+                <motion.div
+                  className="flex justify-center"
+                  initial={{ scale: 0.8 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.1 }}
                 >
-                  {numPages && (
-                    <>
-                      {[...Array(numPages)].map((_, index) => (
-                        <Page
-                          key={`page_${index + 1}`}
-                          pageNumber={index + 1}
-                          renderTextLayer={true}
-                          renderAnnotationLayer={true}
-                          className="shadow-md mb-4 mx-auto"
-                          width={595}
-                          customTextRenderer={textRenderer}
-                        />
-                      ))}
-                    </>
-                  )}
-                </Document>
-              </motion.div>
-            </AnimatePresence>
-          </div>
+                  <FileText className="h-12 w-12 text-muted-foreground/60" />
+                </motion.div>
+                <motion.div
+                  className="space-y-2"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <h3 className="font-semibold text-xl">No PDF Selected</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Select a PDF file from the sidebar to view its contents
+                    here.
+                  </p>
+                </motion.div>
+                <motion.div
+                  className="flex justify-center"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{
+                    delay: 0.3,
+                    repeat: Infinity,
+                    repeatType: "reverse",
+                    duration: 1,
+                  }}
+                >
+                  <div className="bg-muted/50 rounded-full p-2 mt-2">
+                    <ArrowUpCircle className="h-6 w-6 text-muted-foreground/60 -rotate-90" />
+                  </div>
+                </motion.div>
+              </div>
+            </motion.div>
+          ) : (
+            <>
+              {/* Show search info if there's a search query */}
+              {searchQuery && (
+                <div className="mb-4 p-2 bg-muted rounded-lg flex items-center justify-between">
+                  <span className="text-sm">
+                    Showing results for: <strong>{searchQuery}</strong>
+                  </span>
+                  <button
+                    onClick={() => {
+                      router.push(
+                        `/chats/${id}?pdfUrl=${encodeURIComponent(pdfUrl || "")}`
+                      );
+                    }}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+
+              <div className="flex justify-left w-full">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={pdfUrl}
+                    initial={{ x: 50 }}
+                    animate={{ x: 0 }}
+                    exit={{ x: -50 }}
+                    transition={{ duration: 0.2 }}
+                    className="w-[90%]"
+                  >
+                    <Document
+                      file={(pdfUrl as string) || ""}
+                      onLoadSuccess={handleLoadSuccess}
+                      onLoadError={handleLoadError}
+                      loading={
+                        <div className="space-y-4">
+                          <Skeleton className="h-[842px] w-full mx-auto" />
+                          <Skeleton className="h-[842px] w-full mx-auto" />
+                        </div>
+                      }
+                      className="space-y-4"
+                    >
+                      {numPages && (
+                        <>
+                          {[...Array(numPages)].map((_, index) => (
+                            <Page
+                              key={`page_${index + 1}`}
+                              pageNumber={index + 1}
+                              renderTextLayer={true}
+                              renderAnnotationLayer={true}
+                              className="shadow-md mb-4 mx-auto"
+                              width={595}
+                              customTextRenderer={textRenderer}
+                            />
+                          ))}
+                        </>
+                      )}
+                    </Document>
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </RoomProvider>

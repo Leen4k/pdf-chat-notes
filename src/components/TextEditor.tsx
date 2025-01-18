@@ -863,8 +863,8 @@ const TextEditorContent = () => {
 
   return (
     <TooltipProvider>
-      <div className="w-full border rounded-lg shadow-sm bg-card">
-        <div className="sticky -top-4 z-50 border-b bg-background/95 dark:bg-card backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="w-full border rounded-lg shadow-sm">
+        <div className="sticky rounded-t-lg -top-4 z-50 border-b bg-background/95 dark:bg-card backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="flex items-center gap-1 p-2 flex-wrap">
             <Button
               variant="ghost"
