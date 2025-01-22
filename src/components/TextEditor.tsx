@@ -9,7 +9,6 @@ import Highlight from "@tiptap/extension-highlight";
 import Underline from "@tiptap/extension-underline";
 import TextStyle from "@tiptap/extension-text-style";
 import Color from "@tiptap/extension-color";
-import { TextSelection } from "prosemirror-state";
 import {
   Tooltip,
   TooltipContent,
@@ -78,8 +77,6 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
-
-const SAMPLE_CONTENT = `<p class=""></p><h1 class="text-2xl font-bold" style="text-align: center"><mark>សុំក្បែរបានទេ?</mark></h1><p class="" style="text-align: center"></p><p class="">som kbae ban te mn yuu te trem mouy jivit som trem roum rous kbae chan jea pdeii propun roy chnam soniya ban te mn yuu na mn oy pres sram ahhahahah tous jea mean ronaeng kheng khort bang kor jit b nv tae srolanh srolanh srolanh.... jea reang rhot អិចឌី hello world b sl o asdad</p><p class="" style="text-align: center"></p><p class=""><strong>💭 Comment:</strong> ខ្ញុំអត់យល់ទេ</p><p class="">I understand you're saying "ខ្ញុំអត់យល់ទេ" which translates to "I don't understand" in English. That's perfectly okay, the text you're referring to is a mix of Khmer and some English, which can be confusing if you're not familiar with those languages.I understand you're saying "ខ្ញុំអត់យល់ទេ" which translates to "I don't understand" in English. That's perfectly okay, the text you're referring to is a mix of Khmer and some English, which can be confusing if you're not familiar with those languages.</p><p class=""></p><p class="">The bulk of the text is written in Khmer. A rough translation of the Khmer part might sound something like this: "I only want to be with you, for this one life, I only want to be close to you, to be husband and wife for a hundred years, my love. It won't be long, don't be sad, hahaha. Even if there are arguments and anger, I will still love, love, love... forever." You can see it expresses deep affection and commitment.The bulk of the text is written in Khmer. A rough translation of the Khmer part might sound something like this: "I only want to be with you, for this one life, I only want to be close to you, to be husband and wife for a hundred years, my love. It won't be long, don't be sad, hahaha. Even if there are arguments and anger, I will still love, love, love... forever." You can see it expresses deep affection and commitment.</p><p class=""></p><p class="">There are a few other parts mixed in. "អិចឌី" sounds like someone is just typing sounds or perhaps "XD", an emoticon. "hello world" is a common English phrase used in programming to demonstrate the very first bit of code and is probably just a random insertion. And finally "b sl o" appears to just be more random letters.There are a few other parts mixed in. "អិចឌី" sounds like someone is just typing sounds or perhaps "XD", an emoticon. "hello world" is a common English phrase used in programming to demonstrate the very first bit of code and is probably just a random insertion. And finally "b sl o" appears to just be more random letters.</p><p class=""></p><p class="">So, to summarize, the core of the text is a Khmer declaration of love and a desire for a long-lasting relationship, with some random English phrases and keyboard smashes thrown in. It's understandable why it would be confusing. Hopefully, this explanation clarifies things for you!So, to summarize, the core of the text is a Khmer declaration of love and a desire for a long-lasting relationship, with some random English phrases and keyboard smashes thrown in. It's understandable why it would be confusing. Hopefully, this explanation clarifies things for you!</p><p class=""></p><p class="">ហាហាា xdហាហាា xd</p><p class=""></p><h1 class="text-2xl font-bold" style="text-align: center"><mark>ធំជាងវេហា</mark></h1><p class=""><strong>pouk yerng</strong> kor skorl knea rouch jea yuu tang pi mn torn klach jea ku te bong ban jab arom meas ma mn derng te tha o derng kloun pouk yg kor ban joub knea mdorng tt bong kor mean orkas kbae meas sgoun hx kor mn bondoy oy oun kleat tv naa tt lery... bong kor mn del dg sos tha kir jea b del roub o jong jam mn del plex lery pi pel nis pouk yg ban nv kbae knea hx b ng orb roub o oy naen... mn derng preab theab avey oy smer ng kdei srolanh tous veha kor nv tae janh tomhom ney kdei snae del bong prokul oy o kron tae o ngor nhem pipoub louk sros bomprong... kdei sromai bong kir ban khernh kdei suk rbos o kan dai knea hx merl thae thoun dol jas jorea...</p><p class=""><strong>💭 Comment:</strong> ខ្ញុំអត់យល់ទេ hikhik</p><p class="">It's completely understandable that you're saying "ខ្ញុំអត់យល់ទេ hikhik" (I don't understand, hehe). The text you're looking at is written in Khmer, a language spoken in Cambodia. That's why it might seem like gibberish if you're not familiar with it. It's not English or any other common language you might recognize</p><p class="">Essentially, the text you provided is a heartfelt expression, likely a declaration of love. Someone is sharing their feelings and memories with someone they deeply care about. They reminisce about how they met, how they didn't know they'd fall in love, and how they want to hold their loved one close. They talk about giving their love endlessly and wanting their loved one to be happy and safe. It's full of emotion and longing, which can still be felt even without understanding the exact words. Think of it like listening to a beautiful song in a language you don't understand – you can still get a sense of the feeling and mood, even without knowing every <strong>single lyric</strong></p><p class=""></p>`;
 
 const TextEditorContent = () => {
   const { chatId } = useParams();
@@ -1171,7 +1168,7 @@ const TextEditorContent = () => {
               <div className="prose prose-sm max-w-none space-y-4">
                 <div className="space-y-2">
                   <h3 className="font-medium text-base">Definition:</h3>
-                  <div 
+                  <div
                     className="text-sm text-muted-foreground pl-4"
                     dangerouslySetInnerHTML={{
                       __html: wordExplanationMutation.data.data
@@ -1179,33 +1176,35 @@ const TextEditorContent = () => {
                         .replace("Definition:", "")
                         .replace("```html", "")
                         .replace("```", "")
-                        .trim()
+                        .trim(),
                     }}
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <h3 className="font-medium text-base">Part of Speech:</h3>
-                  <div 
+                  <div
                     className="text-sm text-muted-foreground pl-4"
                     dangerouslySetInnerHTML={{
-                      __html: wordExplanationMutation.data.data
-                        .split("Example of Usage:")[0]
-                        .split("Part of Speech:")[1]
-                        ?.trim() || "Part of speech not available"
+                      __html:
+                        wordExplanationMutation.data.data
+                          .split("Example of Usage:")[0]
+                          .split("Part of Speech:")[1]
+                          ?.trim() || "Part of speech not available",
                     }}
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <h3 className="font-medium text-base">Example:</h3>
-                  <div 
+                  <div
                     className="text-sm text-muted-foreground pl-4"
                     dangerouslySetInnerHTML={{
-                      __html: wordExplanationMutation.data.data
-                        .split("Example of Usage:")[1]
-                        ?.replace("```", "")
-                        ?.trim() || "Example not available"
+                      __html:
+                        wordExplanationMutation.data.data
+                          .split("Example of Usage:")[1]
+                          ?.replace("```", "")
+                          ?.trim() || "Example not available",
                     }}
                   />
                 </div>
