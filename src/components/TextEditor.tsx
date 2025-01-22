@@ -16,7 +16,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Sparkles, MessageCircle, Bold, Undo2 } from "lucide-react";
+import { Sparkles, MessageCircle, Bold, Undo2, Book } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Error from "next/error";
@@ -136,13 +136,6 @@ const TextEditorContent = () => {
     [chatId, saveContent]
   );
 
-  // Add state for word definition
-  const [selectedWord, setSelectedWord] = useState("");
-  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
-  const [popoverPosition, setPopoverPosition] = useState({ top: 0, left: 0 });
-  const [initialPosition, setInitialPosition] = useState({ top: 0, left: 0 });
-  const [selectedRange, setSelectedRange] = useState<Range | null>(null);
-
   // Add query for word definition
   const wordExplanationMutation = useMutation({
     mutationFn: async (word: string) => {
@@ -150,89 +143,6 @@ const TextEditorContent = () => {
       return response.data;
     },
   });
-
-  // Update the word selection handler with immediate position calculation
-  const handleWordSelection = useCallback(
-    (view: any, event: any) => {
-      const selection = window.getSelection();
-      if (selection && selection.toString().trim()) {
-        const word = selection.toString().trim();
-        if (word.length < 50) {
-          setSelectedWord(word);
-          wordExplanationMutation.mutate(word);
-
-          const range = selection.getRangeAt(0);
-          const rect = range.getBoundingClientRect();
-          setSelectedRange(range);
-
-          // Calculate position immediately
-          const viewportHeight = window.innerHeight;
-          const viewportWidth = window.innerWidth;
-          const popoverHeight = 200;
-          const popoverWidth = 320;
-          const margin = 10;
-
-          // Position to the right of the selection by default
-          let left = rect.right + margin;
-          let top = rect.top + window.scrollY;
-
-          // If popover would go off right edge, position to the left of selection
-          if (left + popoverWidth > viewportWidth) {
-            left = rect.left - popoverWidth - margin;
-          }
-
-          // If popover would go off bottom edge, adjust top position
-          if (top + popoverHeight > viewportHeight + window.scrollY) {
-            top = rect.bottom + window.scrollY - popoverHeight;
-          }
-
-          // Ensure minimum margins
-          top = Math.max(margin + window.scrollY, top);
-          left = Math.max(margin, left);
-
-          setPopoverPosition({ top, left });
-          setIsPopoverOpen(true);
-        }
-      }
-      return false;
-    },
-    [wordExplanationMutation]
-  );
-
-  // Keep the updatePopoverPosition function for scroll/resize updates
-  const updatePopoverPosition = useCallback(() => {
-    if (selectedRange) {
-      const rect = selectedRange.getBoundingClientRect();
-      const viewportHeight = window.innerHeight;
-      const viewportWidth = window.innerWidth;
-      const popoverHeight = 200; // Approximate height of popover
-      const popoverWidth = 320; // Width of popover (w-80 = 320px)
-      const margin = 10;
-
-      // Position to the right of the selection by default
-      let left = rect.right + margin;
-      let top = rect.top + window.scrollY;
-
-      // If popover would go off right edge, position to the left of selection
-      if (left + popoverWidth > viewportWidth) {
-        left = rect.left - popoverWidth - margin;
-      }
-
-      // If popover would go off bottom edge, adjust top position
-      if (top + popoverHeight > viewportHeight + window.scrollY) {
-        top = rect.bottom + window.scrollY - popoverHeight;
-      }
-
-      // Ensure minimum margins
-      top = Math.max(margin + window.scrollY, top);
-      left = Math.max(margin, left);
-
-      setPopoverPosition({
-        top,
-        left,
-      });
-    }
-  }, [selectedRange]);
 
   // Create the mutation outside of any conditions
   const updateContent = useLiveblocksMutation(
@@ -290,10 +200,6 @@ const TextEditorContent = () => {
       attributes: {
         class:
           "prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none min-h-screen p-4 cursor-text",
-      },
-      handleDOMEvents: {
-        mouseup: handleWordSelection,
-        touchend: handleWordSelection,
       },
     },
     content: "", // Start empty and let the effect handle content
@@ -638,7 +544,54 @@ const TextEditorContent = () => {
   const [commentText, setCommentText] = useState("");
   const [selectedContent, setSelectedContent] = useState("");
 
-  // Update the comment mutation
+  // Add this state near the other state declarations
+  const [commentPosition, setCommentPosition] = useState({ top: 0, left: 0 });
+
+  // Update the comment button click handler to calculate position
+  const handleCommentClick = () => {
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+
+      // Calculate position for comment popover
+      const viewportHeight = window.innerHeight;
+      const viewportWidth = window.innerWidth;
+      const popoverHeight = 300; // Approximate height of popover
+      const popoverWidth = 320; // Width of popover (w-80 = 320px)
+      const margin = 10;
+
+      // Position to the right of the selection by default
+      let left = rect.right + margin;
+      let top = rect.top + window.scrollY;
+
+      // If popover would go off right edge, position to the left of selection
+      if (left + popoverWidth > viewportWidth) {
+        left = rect.left - popoverWidth - margin;
+      }
+
+      // If popover would go off bottom edge, adjust top position
+      if (top + popoverHeight > viewportHeight + window.scrollY) {
+        top = rect.bottom + window.scrollY - popoverHeight;
+      }
+
+      // Ensure minimum margins
+      top = Math.max(margin + window.scrollY, top);
+      left = Math.max(margin, left);
+
+      setCommentPosition({ top, left });
+    }
+
+    setSelectedContent(
+      editor.state.doc.textBetween(
+        editor.state.selection.from,
+        editor.state.selection.to
+      )
+    );
+    setIsCommentDialogOpen(true);
+  };
+
+  // Update the comment mutation to handle loading state better
   const commentMutation = useMutation({
     mutationFn: async ({
       content,
@@ -669,6 +622,7 @@ const TextEditorContent = () => {
         // Restore the original selection
         editor.commands.setTextSelection({ from, to });
       }
+      // Only close and reset after success
       setIsCommentDialogOpen(false);
       setCommentText("");
       toast.success("Comment processed successfully");
@@ -725,15 +679,71 @@ const TextEditorContent = () => {
     );
   };
 
-  // Add this effect to handle window resize
-  useEffect(() => {
-    const handleResize = () => {
-      updateCursor();
-    };
+  // Add new state for dictionary dialog
+  const [isDictionaryDialogOpen, setIsDictionaryDialogOpen] = useState(false);
+  const [wordToLookup, setWordToLookup] = useState("");
 
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, [updateCursor]);
+  // Update the floating buttons section in the render
+  {
+    isTextSelected && (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: -20 }}
+        exit={{ opacity: 0, y: 10 }}
+        transition={{ duration: 0.1 }}
+        className="fixed z-50 flex items-center gap-1 rounded-md shadow-lg"
+        style={{
+          top: aiButtonPosition.top,
+          left: aiButtonPosition.left,
+        }}
+      >
+        <div className="flex gap-1">
+          <Button
+            variant="default"
+            size="sm"
+            className="h-6 text-xs whitespace-nowrap p-4"
+            onClick={() =>
+              handleAISuggestion(
+                editor.state.doc.textBetween(
+                  editor.state.selection.from,
+                  editor.state.selection.to
+                )
+              )
+            }
+          >
+            <Sparkles className="h-3 w-3 mr-1" />
+            Ask AI
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-6 text-xs whitespace-nowrap p-4"
+            onClick={handleCommentClick}
+          >
+            <MessageCircle className="h-3 w-3 mr-1" />
+            Comment
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-6 text-xs whitespace-nowrap p-4"
+            onClick={() => {
+              const selectedText = editor.state.doc.textBetween(
+                editor.state.selection.from,
+                editor.state.selection.to
+              );
+              setWordToLookup(selectedText);
+              setIsDictionaryDialogOpen(true);
+              wordExplanationMutation.mutate(selectedText);
+            }}
+          >
+            <Book className="h-3 w-3 mr-1" />
+            Dictionary
+          </Button>
+        </div>
+      </motion.div>
+    );
+  }
 
   // Show loading state while storage is initializing or content is loading
   if (isStorageLoading || isLoading) {
@@ -1037,7 +1047,7 @@ const TextEditorContent = () => {
               animate={{ opacity: 1, y: -20 }}
               exit={{ opacity: 0, y: 10 }}
               transition={{ duration: 0.1 }}
-              className="fixed z-50 flex items-center gap-1 rounded-md shadow-lg border bg-background"
+              className="fixed z-50 flex items-center gap-1 rounded-md shadow-lg"
               style={{
                 top: aiButtonPosition.top,
                 left: aiButtonPosition.left,
@@ -1047,7 +1057,7 @@ const TextEditorContent = () => {
                 <Button
                   variant="default"
                   size="sm"
-                  className="h-6 text-xs whitespace-nowrap"
+                  className="h-6 text-xs whitespace-nowrap p-4"
                   onClick={() =>
                     handleAISuggestion(
                       editor.state.doc.textBetween(
@@ -1063,19 +1073,28 @@ const TextEditorContent = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-6 text-xs whitespace-nowrap"
-                  onClick={() => {
-                    setSelectedContent(
-                      editor.state.doc.textBetween(
-                        editor.state.selection.from,
-                        editor.state.selection.to
-                      )
-                    );
-                    setIsCommentDialogOpen(true);
-                  }}
+                  className="h-6 text-xs whitespace-nowrap p-4"
+                  onClick={handleCommentClick}
                 >
                   <MessageCircle className="h-3 w-3 mr-1" />
                   Comment
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-6 text-xs whitespace-nowrap p-4"
+                  onClick={() => {
+                    const selectedText = editor.state.doc.textBetween(
+                      editor.state.selection.from,
+                      editor.state.selection.to
+                    );
+                    setWordToLookup(selectedText);
+                    setIsDictionaryDialogOpen(true);
+                    wordExplanationMutation.mutate(selectedText);
+                  }}
+                >
+                  <Book className="h-3 w-3 mr-1" />
+                  Dictionary
                 </Button>
               </div>
             </motion.div>
@@ -1113,81 +1132,160 @@ const TextEditorContent = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+      <Dialog
+        open={isDictionaryDialogOpen}
+        onOpenChange={setIsDictionaryDialogOpen}
+      >
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader className="space-y-8">
+            <DialogTitle>Dictionary</DialogTitle>
+            <div className="flex gap-2 mt-4">
+              <Input
+                value={wordToLookup}
+                onChange={(e) => setWordToLookup(e.target.value)}
+                placeholder="Enter word to look up"
+              />
+              <Button
+                onClick={() => wordExplanationMutation.mutate(wordToLookup)}
+                disabled={
+                  !wordToLookup.trim() || wordExplanationMutation.isPending
+                }
+              >
+                {wordExplanationMutation.isPending ? (
+                  <div className="flex items-center gap-1">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    <span>Looking up...</span>
+                  </div>
+                ) : (
+                  "Look up"
+                )}
+              </Button>
+            </div>
+          </DialogHeader>
+          <div className="mt-4 max-h-[400px] overflow-y-auto rounded-md border border-input bg-background p-4 shadow-sm">
+            {wordExplanationMutation.isPending ? (
+              <div className="flex items-center justify-center p-4">
+                <Loader2 className="h-4 w-4 animate-spin" />
+              </div>
+            ) : wordExplanationMutation.data?.data ? (
+              <div className="prose prose-sm max-w-none space-y-4">
+                <div className="space-y-2">
+                  <h3 className="font-medium text-base">Definition:</h3>
+                  <div 
+                    className="text-sm text-muted-foreground pl-4"
+                    dangerouslySetInnerHTML={{
+                      __html: wordExplanationMutation.data.data
+                        .split("Part of Speech:")[0]
+                        .replace("Definition:", "")
+                        .replace("```html", "")
+                        .replace("```", "")
+                        .trim()
+                    }}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <h3 className="font-medium text-base">Part of Speech:</h3>
+                  <div 
+                    className="text-sm text-muted-foreground pl-4"
+                    dangerouslySetInnerHTML={{
+                      __html: wordExplanationMutation.data.data
+                        .split("Example of Usage:")[0]
+                        .split("Part of Speech:")[1]
+                        ?.trim() || "Part of speech not available"
+                    }}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <h3 className="font-medium text-base">Example:</h3>
+                  <div 
+                    className="text-sm text-muted-foreground pl-4"
+                    dangerouslySetInnerHTML={{
+                      __html: wordExplanationMutation.data.data
+                        .split("Example of Usage:")[1]
+                        ?.replace("```", "")
+                        ?.trim() || "Example not available"
+                    }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Enter a word and click "Look up" to see its explanation
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsDictionaryDialogOpen(false)}
+            >
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Popover open={isCommentDialogOpen} onOpenChange={setIsCommentDialogOpen}>
         <PopoverContent
           className="w-80"
           style={{
             position: "fixed",
-            ...popoverPosition,
+            top: commentPosition.top,
+            left: commentPosition.left,
             zIndex: 50,
             maxHeight: "300px",
             overflowY: "auto",
           }}
         >
-          {wordExplanationMutation.isPending ? (
-            <div className="flex items-center justify-center p-4">
-              <Loader2 className="h-4 w-4 animate-spin" />
-            </div>
-          ) : wordExplanationMutation.data?.data ? (
-            <div
-              className="prose prose-sm max-w-none"
-              dangerouslySetInnerHTML={{
-                __html: wordExplanationMutation.data.data
-                  .replace("```html", "")
-                  .replace("```", ""),
-              }}
-            />
-          ) : (
-            <p className="text-sm text-muted-foreground p-2">
-              Select a word to see its explanation
-            </p>
-          )}
-        </PopoverContent>
-      </Popover>
-      <Dialog open={isCommentDialogOpen} onOpenChange={setIsCommentDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Comment</DialogTitle>
-          </DialogHeader>
           <div className="space-y-4">
             <div className="p-3 bg-muted/50 rounded-md">
               <p className="text-sm text-muted-foreground">Selected text:</p>
-              <p className="text-sm mt-1">{selectedContent}</p>
+              <div className="max-h-32 overflow-y-auto relative">
+                <p className="text-sm mt-1 pr-2">{selectedContent}</p>
+                <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-muted/50 to-transparent pointer-events-none" />
+              </div>
             </div>
             <Textarea
-              placeholder="Enter your comment or question..."
+              placeholder="@example please elaborate more..."
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
               className="min-h-[100px]"
             />
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsCommentDialogOpen(false)}
+                disabled={commentMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  if (commentText.trim()) {
+                    commentMutation.mutate({
+                      content: selectedContent,
+                      comment: commentText,
+                    });
+                  }
+                }}
+                disabled={!commentText.trim() || commentMutation.isPending}
+              >
+                {commentMutation.isPending ? (
+                  <div className="flex items-center gap-1">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    <span>Submitting...</span>
+                  </div>
+                ) : (
+                  "Submit"
+                )}
+              </Button>
+            </div>
           </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsCommentDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                if (commentText.trim()) {
-                  commentMutation.mutate({
-                    content: selectedContent,
-                    comment: commentText,
-                  });
-                }
-              }}
-              disabled={!commentText.trim() || commentMutation.isPending}
-            >
-              {commentMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                "Submit"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </PopoverContent>
+      </Popover>
       <ActiveUsers />
     </TooltipProvider>
   );

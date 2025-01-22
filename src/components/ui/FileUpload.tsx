@@ -1,5 +1,5 @@
 "use client";
-import { uploadFile } from "@/utils/supabase/supabaseUpload";
+import { sanitizeFileName, uploadFile } from "@/utils/supabase/supabaseUpload";
 import { supabase } from "../../../supabase";
 import { useDropzone } from "react-dropzone";
 import toast from "react-hot-toast";
@@ -57,6 +57,13 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadComplete }) => {
     onDrop: async (acceptedFile) => {
       const file = acceptedFile[0];
       const fileName = acceptedFile[0].name;
+      const originalFileName = file.name;
+      const sanitizedFileName = sanitizeFileName(originalFileName);
+
+      // Create a new File object with the sanitized name
+      const sanitizedFile = new File([file], sanitizedFileName, {
+        type: file.type,
+      });
 
       if (file.size > 15 * 1024 * 1024) {
         // larger than 15mb
@@ -67,7 +74,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadComplete }) => {
       const toastId = toast.loading("uploading...");
 
       try {
-        const { id, publicUrl, path } = await uploadFile(file, "AI_PDF bucket");
+        const { id, publicUrl, path } = await uploadFile(sanitizedFile, "AI_PDF bucket");
         mutate(
           {
             file_key: id,

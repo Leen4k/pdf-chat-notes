@@ -36,6 +36,15 @@ export function getFileUrl(bucketName: string, path: string) {
   return publicUrl;
 }
 
+// Function to sanitize filename
+export const sanitizeFileName = (fileName: string): string => {
+  return fileName
+    .replace(/\s+/g, "_") // Replace spaces with underscores
+    .replace(/[\[\]()]/g, "") // Remove brackets and parentheses
+    .replace(/[^a-zA-Z0-9._-]/g, "") // Remove any other special characters
+    .toLowerCase(); // Convert to lowercase for consistency
+};
+
 //   try {
 //     const { data, error } = await supabase.storage
 //       .from("AI_PDF bucket")

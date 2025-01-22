@@ -206,14 +206,14 @@ export function CollaborationSection({ chatId }: CollaborationSectionProps) {
                   key={user.id}
                   className="flex items-center justify-between p-2 rounded-md border"
                 >
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center truncate space-x-2">
                     <Avatar className="h-6 w-6">
                       <AvatarImage src={user.imageUrl} />
                       <AvatarFallback>
                         {user.name?.charAt(0) || "U"}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="text-sm">{user.email}</span>
+                    <span className="text-sm truncate">{user.email}</span>
                     {user.isOwner && (
                       <Badge variant="secondary" className="text-xs">
                         Owner
