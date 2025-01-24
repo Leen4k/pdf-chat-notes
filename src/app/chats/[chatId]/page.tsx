@@ -114,14 +114,14 @@ const PDFViewer = () => {
     >
       <div className="grid xl:grid-cols-2 flex-1 w-full">
         {/* Text Editor Column */}
-        <div className="w-full px-4 my-4 overflow-hidden overflow-y-auto rounded-lg h-screen flex-1">
+        <div className="w-full px-4 my-4 rounded-lg h-screen overflow-y-scroll flex-1">
           <ClientSideSuspense fallback={<div>Loading…</div>}>
             {() => <TextEditor />}
           </ClientSideSuspense>
         </div>
 
         {/* PDF Viewer Column */}
-        <div className="w-full px-4 my-4 overflow-y-auto h-screen">
+        <div className="w-full px-4 my-4 overflow-y-auto h-screen sticky">
           {error && <div className="text-red-500 p-4">{error}</div>}
 
           {!pdfUrl ? (
@@ -129,7 +129,7 @@ const PDFViewer = () => {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
-              className="h-full flex items-center justify-center"
+              className="h-full flex items-center justify-center sticky"
             >
               <div
                 className={cn(
@@ -196,7 +196,7 @@ const PDFViewer = () => {
                 </div>
               )}
 
-              <div className="flex justify-left w-full">
+              <div className="flex justify-left w-full sticky">
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={pdfUrl}
@@ -204,7 +204,7 @@ const PDFViewer = () => {
                     animate={{ x: 0 }}
                     exit={{ x: -50 }}
                     transition={{ duration: 0.2 }}
-                    className="w-[90%]"
+                    className="w-[90%] sticky"
                   >
                     <Document
                       file={(pdfUrl as string) || ""}

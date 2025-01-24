@@ -345,11 +345,9 @@ const TextEditorContent = () => {
         const { data: htmlContent, question } = data;
 
         const formattedContent = `
-<div class="ai-qa-block">
-  <div class="ai-question"><strong>Q:</strong> ${question}</div>
-  <div class="ai-response">${htmlContent
-    .replace("```html", "")
-    .replace("```", "")}</div>
+<div class="">
+  <div class=""><strong>Q:</strong> ${question}</div>
+  <div class="">${htmlContent.replace("```html", "").replace("```", "")}</div>
 </div>`;
 
         editor.chain().focus().insertContent(formattedContent.trim()).run();
@@ -520,19 +518,46 @@ const TextEditorContent = () => {
     }
   }, [editor]);
 
-  // Add effect to update position on selection change
+  // Add this state to track if the buttons should be visible
+  const [showButtons, setShowButtons] = useState(false);
+
+  // Update the effect that handles selection changes
   useEffect(() => {
     if (!editor) return;
 
-    const updateOnSelect = () => {
-      if (editor.state.selection.content()) {
-        updateAIButtonPosition();
+    let timeoutId: NodeJS.Timeout;
+
+    const updateSelection = () => {
+      const hasSelection = !editor.state.selection.empty;
+
+      // Clear any existing timeout
+      if (timeoutId) {
+        clearTimeout(timeoutId);
       }
+
+      // Add a small delay before updating the state
+      timeoutId = setTimeout(() => {
+        setShowButtons(hasSelection);
+        if (hasSelection) {
+          updateAIButtonPosition();
+        }
+      }, 100);
     };
 
-    editor.on("selectionUpdate", updateOnSelect);
+    editor.on("selectionUpdate", updateSelection);
+    editor.on("blur", () => {
+      // Don't immediately hide on blur
+      timeoutId = setTimeout(() => setShowButtons(false), 200);
+    });
+    editor.on("focus", updateSelection);
+
     return () => {
-      editor.off("selectionUpdate", updateOnSelect);
+      editor.off("selectionUpdate", updateSelection);
+      editor.off("blur", () => setShowButtons(false));
+      editor.off("focus", updateSelection);
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
     };
   }, [editor, updateAIButtonPosition]);
 
@@ -608,9 +633,9 @@ const TextEditorContent = () => {
 
         // Format the response similar to Ask AI
         const formattedContent = `
-<div class="ai-qa-block">
-  <div class="ai-question"><strong>💭 Comment:</strong> ${commentText}</div>
-  <div class="ai-response">${data.data}</div>
+<div class="">
+  <div class=""><strong>💭 Comment:</strong> ${commentText}</div>
+  <div class="">${data.data}</div>
 </div>`;
 
         // Insert the response after the selected text
@@ -629,34 +654,6 @@ const TextEditorContent = () => {
     },
   });
 
-  // Add this state to track if text is selected
-  const [isTextSelected, setIsTextSelected] = useState(false);
-
-  // Update the effect that handles selection changes
-  useEffect(() => {
-    if (!editor) return;
-
-    const updateSelection = () => {
-      const hasSelection = !editor.state.selection.empty;
-      setIsTextSelected(hasSelection);
-      if (hasSelection) {
-        updateAIButtonPosition();
-      }
-    };
-
-    // Listen for both selection update and focus/blur events
-    editor.on("selectionUpdate", updateSelection);
-    editor.on("blur", () => setIsTextSelected(false));
-    editor.on("focus", updateSelection);
-
-    return () => {
-      editor.off("selectionUpdate", updateSelection);
-      editor.off("blur", () => setIsTextSelected(false));
-      editor.off("focus", updateSelection);
-    };
-  }, [editor, updateAIButtonPosition]);
-
-  // Add ThreadOverlay component for comments
   const ThreadOverlay = () => {
     const { threads } = useThreads({ query: { resolved: false } });
 
@@ -675,14 +672,13 @@ const TextEditorContent = () => {
       </>
     );
   };
-
   // Add new state for dictionary dialog
   const [isDictionaryDialogOpen, setIsDictionaryDialogOpen] = useState(false);
   const [wordToLookup, setWordToLookup] = useState("");
 
   // Update the floating buttons section in the render
   {
-    isTextSelected && (
+    showButtons && (
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: -20 }}
@@ -699,14 +695,17 @@ const TextEditorContent = () => {
             variant="default"
             size="sm"
             className="h-6 text-xs whitespace-nowrap p-4"
-            onClick={() =>
-              handleAISuggestion(
-                editor.state.doc.textBetween(
-                  editor.state.selection.from,
-                  editor.state.selection.to
-                )
-              )
-            }
+            onMouseDown={(e) => {
+              // Prevent the button click from removing the selection
+              e.preventDefault();
+            }}
+            onClick={() => {
+              const selectedText = editor.state.doc.textBetween(
+                editor.state.selection.from,
+                editor.state.selection.to
+              );
+              handleAISuggestion(selectedText);
+            }}
           >
             <Sparkles className="h-3 w-3 mr-1" />
             Ask AI
@@ -715,6 +714,9 @@ const TextEditorContent = () => {
             variant="outline"
             size="sm"
             className="h-6 text-xs whitespace-nowrap p-4"
+            onMouseDown={(e) => {
+              e.preventDefault();
+            }}
             onClick={handleCommentClick}
           >
             <MessageCircle className="h-3 w-3 mr-1" />
@@ -724,6 +726,9 @@ const TextEditorContent = () => {
             variant="outline"
             size="sm"
             className="h-6 text-xs whitespace-nowrap p-4"
+            onMouseDown={(e) => {
+              e.preventDefault();
+            }}
             onClick={() => {
               const selectedText = editor.state.doc.textBetween(
                 editor.state.selection.from,
@@ -1038,7 +1043,7 @@ const TextEditorContent = () => {
           </ClientSideSuspense>
         </div>
         <AnimatePresence>
-          {isTextSelected && (
+          {showButtons && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: -20 }}
@@ -1055,14 +1060,17 @@ const TextEditorContent = () => {
                   variant="default"
                   size="sm"
                   className="h-6 text-xs whitespace-nowrap p-4"
-                  onClick={() =>
-                    handleAISuggestion(
-                      editor.state.doc.textBetween(
-                        editor.state.selection.from,
-                        editor.state.selection.to
-                      )
-                    )
-                  }
+                  onMouseDown={(e) => {
+                    // Prevent the button click from removing the selection
+                    e.preventDefault();
+                  }}
+                  onClick={() => {
+                    const selectedText = editor.state.doc.textBetween(
+                      editor.state.selection.from,
+                      editor.state.selection.to
+                    );
+                    handleAISuggestion(selectedText);
+                  }}
                 >
                   <Sparkles className="h-3 w-3 mr-1" />
                   Ask AI
@@ -1071,6 +1079,9 @@ const TextEditorContent = () => {
                   variant="outline"
                   size="sm"
                   className="h-6 text-xs whitespace-nowrap p-4"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                  }}
                   onClick={handleCommentClick}
                 >
                   <MessageCircle className="h-3 w-3 mr-1" />
@@ -1080,6 +1091,9 @@ const TextEditorContent = () => {
                   variant="outline"
                   size="sm"
                   className="h-6 text-xs whitespace-nowrap p-4"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                  }}
                   onClick={() => {
                     const selectedText = editor.state.doc.textBetween(
                       editor.state.selection.from,
