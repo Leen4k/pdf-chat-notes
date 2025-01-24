@@ -321,46 +321,47 @@ const TextEditorContent = () => {
     };
   }, [debouncedSave]);
 
-  const { mutate: getAISuggestion } = useMutation({
-    mutationFn: async (selectedText: string) => {
-      try {
-        const response = await axios.post("/api/question", {
-          questionQuery: selectedText,
-          chatId,
-        });
-        return {
-          data: response.data.data,
-          question: selectedText,
-        };
-      } catch (err: any) {
-        throw new Error(err);
-      }
-    },
-    onMutate: () => {
-      // Add loading toast when mutation starts
-      toast.loading("Getting AI suggestions...", { id: "ai-suggestion" });
-    },
-    onSuccess: (data) => {
-      if (editor) {
-        const { data: htmlContent, question } = data;
+  const { mutate: getAISuggestion, isPending: getAISuggestionPending } =
+    useMutation({
+      mutationFn: async (selectedText: string) => {
+        try {
+          const response = await axios.post("/api/question", {
+            questionQuery: selectedText,
+            chatId,
+          });
+          return {
+            data: response.data.data,
+            question: selectedText,
+          };
+        } catch (err: any) {
+          throw new Error(err);
+        }
+      },
+      onMutate: () => {
+        // Add loading toast when mutation starts
+        toast.loading("Getting AI suggestions...", { id: "ai-suggestion" });
+      },
+      onSuccess: (data) => {
+        if (editor) {
+          const { data: htmlContent, question } = data;
 
-        const formattedContent = `
+          const formattedContent = `
 <div class="">
-  <div class=""><strong>Q:</strong> ${question}</div>
-  <div class="">${htmlContent.replace("```html", "").replace("```", "")}</div>
+  <div class="mb-3"><strong>Q:</strong> ${question}</div>
+  <div class="mt-3">${htmlContent.replace("```html", "").replace("```", "")}</div>
 </div>`;
 
-        editor.chain().focus().insertContent(formattedContent.trim()).run();
+          editor.chain().focus().insertContent(formattedContent.trim()).run();
 
-        // Update the loading toast to success
-        toast.success("AI suggestion added", { id: "ai-suggestion" });
-      }
-    },
-    onError: () => {
-      // Update the loading toast to error
-      toast.error("Failed to get AI suggestions", { id: "ai-suggestion" });
-    },
-  });
+          // Update the loading toast to success
+          toast.success("AI suggestion added", { id: "ai-suggestion" });
+        }
+      },
+      onError: () => {
+        // Update the loading toast to error
+        toast.error("Failed to get AI suggestions", { id: "ai-suggestion" });
+      },
+    });
 
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [exportFilename, setExportFilename] = useState(
@@ -415,11 +416,6 @@ const TextEditorContent = () => {
 
   // Update the editor styles for more compact formatting
   const editorStyles = `
-    .ProseMirror {
-      > * + * {
-        margin-top: 0.75em;
-      }
-    }
 
     /* Override default selection color */
     .ProseMirror ::selection {
@@ -700,6 +696,7 @@ const TextEditorContent = () => {
               e.preventDefault();
             }}
             onClick={() => {
+              setShowButtons(false);
               const selectedText = editor.state.doc.textBetween(
                 editor.state.selection.from,
                 editor.state.selection.to
@@ -707,8 +704,10 @@ const TextEditorContent = () => {
               handleAISuggestion(selectedText);
             }}
           >
-            <Sparkles className="h-3 w-3 mr-1" />
-            Ask AI
+            <div className="flex items-center gap-1">
+              <Sparkles className="h-3 w-3 mr-1" />
+              Ask AI
+            </div>
           </Button>
           <Button
             variant="outline"
@@ -774,6 +773,7 @@ const TextEditorContent = () => {
   }
 
   const handleAISuggestion = (selectedText: string) => {
+    setShowButtons(false);
     selectedText && getAISuggestion(selectedText);
   };
 
