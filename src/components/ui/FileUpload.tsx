@@ -38,6 +38,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadComplete }) => {
     },
     onMutate: () => {
       toast.loading(`embedding data to ${chatId}...`, { id: "embedding" });
+      toast.loading(`cooking AI PDF magic🪄🍳...`, { id: "embedding" });
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({
@@ -47,7 +48,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadComplete }) => {
         queryKey: ["userChats"],
         exact: false,
       });
-      toast.success("embedded data successfully", { id: "embedding" });
+      toast.success("Your PDF recipe is ready👨‍🍳🍞...", { id: "embedding" });
     },
   });
 
@@ -71,10 +72,13 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadComplete }) => {
         return;
       }
 
-      const toastId = toast.loading("uploading...");
+      const toastId = toast.loading("uploading to the 🌨️...");
 
       try {
-        const { id, publicUrl, path } = await uploadFile(sanitizedFile, "AI_PDF bucket");
+        const { id, publicUrl, path } = await uploadFile(
+          sanitizedFile,
+          "AI_PDF bucket"
+        );
         mutate(
           {
             file_key: id,
