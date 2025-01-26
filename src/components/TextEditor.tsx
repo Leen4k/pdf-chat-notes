@@ -629,12 +629,10 @@ const TextEditorContent = () => {
 
         // Format the response similar to Ask AI
         const formattedContent = `
-<motion.div initial={{ opacity: 0 }}
-    animate={{ opacity: 1 }}
-    transition={{ duration: 0.25 * index }} class="mt-3">
+<div class="mt-3">
   <div class="mb-3"><strong>💭 Comment:</strong> ${commentText}</div>
   <div class="mt-3">${data.data}</div>
-</motion.div>`;
+</div>`;
 
         // Insert the response after the selected text
         editor.chain().focus().insertContentAt(to, formattedContent).run();
