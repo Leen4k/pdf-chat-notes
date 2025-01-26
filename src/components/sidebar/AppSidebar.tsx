@@ -194,7 +194,7 @@ export function AppSidebar() {
                 ) : documentChats?.length === 0 ? (
                   <EmptyState message="No PDF files uploaded yet" />
                 ) : (
-                  documentChats?.map((chat: DocumentChat) => (
+                  documentChats?.map((chat: DocumentChat, index: number) => (
                     <DocumentItem
                       key={chat.id}
                       chat={chat}
@@ -222,6 +222,7 @@ export function AppSidebar() {
                           actionButtonClass: "bg-red-500 hover:bg-red-600",
                         })
                       }
+                      index={index}
                     />
                   ))
                 )}

@@ -6,7 +6,7 @@ import {
   embeddings,
   findSimilarChunks,
   processAndStoreEmbeddings,
-} from "@/lib/llm/gemini";
+} from "@/lib/llm/gemini/gemini";
 import { chats, fileChunks, files } from "@/lib/db/schema";
 import { and, eq, sql, desc, asc } from "drizzle-orm";
 import { db } from "@/lib/db";

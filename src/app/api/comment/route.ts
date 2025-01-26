@@ -1,4 +1,4 @@
-import { chatSession } from "@/lib/llm/gemini-model";
+import { chatSession } from "@/lib/llm/gemini/gemini-model";
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
@@ -25,31 +25,23 @@ Guidelines:
 - Maintain a professional but conversational tone
 - Break complex ideas into digestible sections
 
-Format the response in clean HTML paragraphs without visible HTML tags or bullet points.`;
+Format your response in HTML using <p> tags for paragraphs and <strong> tags for emphasis. Keep formatting minimal and avoid unnecessary line breaks.`;
 
     const result = await chatSession.sendMessage(prompt);
     let response = result.response.text();
 
     // Clean up the response
-    response = response
+    const cleanResponse = response
       .trim()
-      // Remove HTML annotations
-      .replace(/```html/g, "")
-      .replace(/```/g, "")
-      // Clean up bullet points
-      .replace(/•\s*/g, "")
-      // Remove excessive whitespace
-      .replace(/\n{3,}/g, "\n\n")
-      .replace(/\s{2,}/g, " ")
-      // Format paragraphs properly
-      .split("\n")
-      .filter((line) => line.trim())
-      .map((line) => `<p>${line.trim()}</p>`)
-      .join("\n");
-
+      .replace(/\n+/g, "\n")
+      .replace(/\s+/g, " ")
+      .replace(/<p>\s+/g, "<p>")
+      .replace(/\s+<\/p>/g, "</p>")
+      .replace("```html", "")
+      .replace("```", "");
     return NextResponse.json({
       status: "success",
-      data: response,
+      data: cleanResponse,
     });
   } catch (error) {
     console.error("Error in comment endpoint:", error);

@@ -1,4 +1,4 @@
-import { chatSession } from "@/lib/llm/gemini-model";
+import { chatSession } from "@/lib/llm/gemini/gemini-model";
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 

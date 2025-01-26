@@ -55,6 +55,7 @@ import {
 import ThemeToggler from "@/components/themes/ThemeToggler";
 import { getCachedChats, setCachedChats } from "@/lib/cache/redis";
 import { useAuth } from "@clerk/nextjs";
+import { motion } from "framer-motion";
 
 // Type definition remains the same
 type DocumentChat = {
@@ -632,8 +633,11 @@ export function AppSidebar() {
                   </>
                 ) : (
                   <>
-                    {documentChats?.map((chat: DocumentChat) => (
-                      <SidebarMenuItem
+                    {documentChats?.map((chat: DocumentChat, index: number) => (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4 * index }}
                         key={chat.id}
                         className="relative group px-2 py-1.5"
                       >
@@ -703,7 +707,7 @@ export function AppSidebar() {
                             </div>
                           </Link>
                         </SidebarMenuButton>
-                      </SidebarMenuItem>
+                      </motion.div>
                     ))}
                   </>
                 )}

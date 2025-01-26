@@ -6,6 +6,7 @@ import { TbEdit } from "react-icons/tb";
 import { Trash2 } from "lucide-react";
 import Link from "next/link";
 import { SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
+import { motion } from "framer-motion";
 
 interface DocumentItemProps {
   chat: DocumentChat;
@@ -13,6 +14,7 @@ interface DocumentItemProps {
   onRename: () => void;
   onToggleSelection: () => void;
   onDelete: () => void;
+  index: number;
 }
 
 export const DocumentItem = ({
@@ -21,8 +23,14 @@ export const DocumentItem = ({
   onRename,
   onToggleSelection,
   onDelete,
+  index,
 }: DocumentItemProps) => (
-  <SidebarMenuItem className="relative group py-1.5">
+  <motion.div
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    transition={{ duration: 0.25 * index }}
+    className="relative group py-1.5"
+  >
     <SidebarMenuButton asChild>
       <Link
         className={`relative w-full flex items-center justify-between group gap-3 rounded-md py-2 ${
@@ -64,5 +72,5 @@ export const DocumentItem = ({
         </div>
       </Link>
     </SidebarMenuButton>
-  </SidebarMenuItem>
+  </motion.div>
 );

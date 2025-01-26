@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { chats, fileChunks, files } from "@/lib/db/schema";
 import { auth } from "@clerk/nextjs/server";
-import { embeddings } from "@/lib/llm/gemini";
+import { embeddings } from "@/lib/llm/gemini/gemini";
 import { eq, sql, and, ilike, desc, or } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
@@ -44,7 +44,10 @@ export async function POST(req: Request) {
           eq(chats.userId, userId),
           or(
             ilike(fileChunks.content, `%${query}%`),
-            ilike(files.name, `%${query}%`)
+            ilike(fileChunks.content, `%${query.replace(" ", "")}%`),
+            ilike(fileChunks.content, `%${query.replace(" ", "")}%`),
+            ilike(files.name, `%${query}%`),
+            ilike(files.name, `%${query.replace(" ", "")}%`)
           )
         )
       )

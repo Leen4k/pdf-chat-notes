@@ -1,7 +1,7 @@
 import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai";
 import { TaskType } from "@google/generative-ai";
-import { chats, fileChunks, files } from "../db/schema";
-import { db } from "../db";
+import { chats, fileChunks, files } from "../../db/schema";
+import { db } from "../../db";
 import { cosineDistance, desc, eq, gt, sql, and } from "drizzle-orm";
 
 export const embeddings = new GoogleGenerativeAIEmbeddings({
@@ -76,46 +76,6 @@ export async function processAndStoreEmbeddings(
     throw new Error("Failed to process and store embeddings");
   }
 }
-
-// export async function findSimilarChunks(
-//   searchQuery: string,
-//   userId?: string,
-//   threshold = 0.5,
-//   limit = 4
-// ) {
-//   const embeddings = new GoogleGenerativeAIEmbeddings({
-//     apiKey: process.env.GEMINI_API_KEY,
-//     model: "text-embedding-004",
-//     taskType: TaskType.RETRIEVAL_DOCUMENT,
-//     title: "Document title",
-//   });
-
-//   try {
-//     const queryEmbedding = await embeddings.embedQuery(searchQuery);
-//     const similarity = sql<number>`1 - (${cosineDistance(
-//       fileChunks.embedding,
-//       queryEmbedding
-//     )})`;
-
-//     const similarChunks = await db
-//       .select({
-//         text: fileChunks.content,
-//         pdfName: files.name,
-//         pdfUrl: files.url,
-//         similarity: similarity,
-//       })
-//       .from(fileChunks)
-//       .innerJoin(files, eq(files.id, fileChunks.fileId))
-//       .where(gt(similarity, 0.5))
-//       .orderBy(desc(similarity))
-//       .limit(limit);
-
-//     return similarChunks;
-//   } catch (error) {
-//     console.error("Error finding similar chunks:", error);
-//     throw new Error("Failed to find similar chunks");
-//   }
-// }
 
 export async function findSimilarChunks(
   searchQuery: string,

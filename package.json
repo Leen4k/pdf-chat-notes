@@ -58,6 +58,8 @@
     "framer-motion": "^11.14.4",
     "html2pdf.js": "^0.10.2",
     "langchain": "^0.2.8",
+    "llamaai": "^1.0.4",
+    "llamaindex": "^0.8.31",
     "lodash": "^4.17.21",
     "lucide-react": "^0.396.0",
     "next": "14.2.4",
