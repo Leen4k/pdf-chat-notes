@@ -7,7 +7,7 @@ import {
 const apiKey = process.env.GEMINI_API_KEY;
 const genAI = new GoogleGenerativeAI(apiKey as string);
 
-let currentModelName = "gemini-1.5-flash";
+let currentModelName = "gemini-1.5-pro";
 
 export function createChatSession(modelName: string = currentModelName) {
   console.log("Creating session with model:", modelName);
