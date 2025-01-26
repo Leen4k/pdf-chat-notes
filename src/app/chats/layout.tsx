@@ -5,6 +5,12 @@ import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { gradientThemes } from "@/lib/constant/gradients";
 import { AppSidebar } from "@/components/sidebar/AppSidebar";
+import { GeminiModelSelector } from "@/components/AIDropdown";
+import {
+  getCurrentModel,
+  updateChatModel,
+} from "@/lib/llm/gemini/gemini-model";
+import { useState } from "react";
 
 export default function ChatsLayout({
   children,
@@ -12,6 +18,7 @@ export default function ChatsLayout({
   children: React.ReactNode;
 }) {
   const { chatId } = useParams();
+  const [currentModel, setCurrentModel] = useState("gemini-1.5-flash");
 
   const { data: chatData } = useQuery({
     queryKey: ["chat", chatId],
@@ -21,6 +28,12 @@ export default function ChatsLayout({
     },
     enabled: !!chatId,
   });
+
+  const handleModelChange = (model: string) => {
+    setCurrentModel(model);
+    updateChatModel(model);
+    console.log("Current model after change:", getCurrentModel()); // Add this line
+  };
 
   const gradientClass = chatData?.gradientId
     ? gradientThemes.find((theme) => theme.id === chatData.gradientId)?.gradient
@@ -37,7 +50,13 @@ export default function ChatsLayout({
         }
       >
         {" "}
-        <SidebarTrigger variant="outline" className="ml-4 mt-4" />
+        <div className="flex items-center space-x-4 ml-4 mt-4">
+          <SidebarTrigger variant="outline" />
+          <GeminiModelSelector
+            currentModel={currentModel}
+            onModelChange={handleModelChange}
+          />
+        </div>
         {children}
       </main>
     </SidebarProvider>
