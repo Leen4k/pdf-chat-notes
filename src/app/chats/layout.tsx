@@ -18,7 +18,7 @@ export default function ChatsLayout({
   children: React.ReactNode;
 }) {
   const { chatId } = useParams();
-  const [currentModel, setCurrentModel] = useState("gemini-1.5-pro");
+  const [currentModel, setCurrentModel] = useState("gemini-1.5-flash");
 
   const { data: chatData } = useQuery({
     queryKey: ["chat", chatId],
