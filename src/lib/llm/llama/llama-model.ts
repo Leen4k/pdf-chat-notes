@@ -42,3 +42,5 @@ export function updateChatModel(modelName: string) {
 export function getCurrentModel(): string {
   return currentModelName;
 }
+
+//llama model
