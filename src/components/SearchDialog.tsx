@@ -8,7 +8,6 @@ import axios from "axios";
 import { useRouter } from "next/navigation";
 import { Badge } from "./ui/badge";
 import debounce from "lodash/debounce";
-import { motion } from "framer-motion";
 
 export function SearchDialog() {
   const [open, setOpen] = useState(false);
@@ -117,9 +116,9 @@ export function SearchDialog() {
                 </div>
               ) : (
                 searchMutation.data?.results?.map((result: any) => (
-                  <motion.div
+                  <div
                     key={result.fileId}
-                    className="p-4 border rounded-lg cursor-pointer hover:bg-accent transition-colors truncate"
+                    className="p-4 border rounded-lg cursor-pointer hover:bg-accent transition-colors"
                     onClick={() => {
                       router.push(
                         `/chats/${result.chatId}?pdfUrl=${encodeURIComponent(
@@ -141,15 +140,10 @@ export function SearchDialog() {
                       </Badge>
                     </div>
                     <p
-                      className="text-sm text-muted-foreground max-h-[3rem] overflow-hidden text-ellipsis"
-                      dangerouslySetInnerHTML={{
-                        __html:
-                          result.content.length > 200
-                            ? result.content.slice(0, 200) + "..."
-                            : result.content,
-                      }}
+                      className="text-sm text-muted-foreground line-clamp-2 mt-1"
+                      dangerouslySetInnerHTML={{ __html: result.content }}
                     />
-                  </motion.div>
+                  </div>
                 ))
               )}
             </div>
