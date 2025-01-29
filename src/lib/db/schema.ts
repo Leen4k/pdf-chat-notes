@@ -12,7 +12,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 export const userSystemEnum = pgEnum("user_system_enum", ["system", "user"]);
-
+//TODO: Add a column for the model
 export const chats = pgTable("chats", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
