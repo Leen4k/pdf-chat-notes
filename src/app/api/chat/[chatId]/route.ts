@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { chats } from "@/lib/db/schema";
 import { auth } from "@clerk/nextjs/server";
-import { eq } from "drizzle-orm";
+import { eq, desc, asc } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { invalidateCache } from "@/lib/cache/redis";
 
@@ -16,7 +16,11 @@ export async function GET(
     }
 
     const chatId = parseInt(params.chatId);
-    const [chat] = await db.select().from(chats).where(eq(chats.id, chatId));
+    const [chat] = await db
+      .select()
+      .from(chats)
+      .where(eq(chats.id, chatId))
+      .orderBy(asc(chats.name));
 
     if (!chat) {
       return NextResponse.json({ error: "Chat not found" }, { status: 404 });

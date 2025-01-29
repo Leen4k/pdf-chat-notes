@@ -1,31 +1,29 @@
 // src/lib/llm/openai/openai-model.ts
 import OpenAI from "openai";
-import { OpenAIEmbeddings } from "@langchain/openai";
 
-const apiKey = process.env.OPENAI_API_KEY;
-const openai = new OpenAI({
-  apiKey: apiKey,
-});
+let openaiClient: OpenAI | null = null;
+let currentModel = "gpt-3.5-turbo";
 
-let currentModelName = "gpt-4";
-
-export function createChatSession(modelName: string = currentModelName) {
-  console.log("Creating session with model:", modelName);
-
-  return openai.beta.chat.completions.stream({
-    model: modelName,
-    messages: [],
-  });
+function getOpenAIClient() {
+  if (!openaiClient) {
+    openaiClient = new OpenAI({
+      apiKey: process.env.OPEN_AI_API_KEY,
+    });
+  }
+  return openaiClient;
 }
 
-export let chatSession = createChatSession();
+export function createOpenAICompletion() {
+  const client = getOpenAIClient();
+  console.log("Creating OpenAI session with model:", currentModel);
+  return client.chat.completions;
+}
 
-export function updateChatModel(modelName: string) {
-  console.log("Updating model to:", modelName);
-  currentModelName = modelName;
-  chatSession = createChatSession(modelName);
+export function updateOpenAIModel(modelName: string) {
+  currentModel = modelName;
+  console.log("OpenAI model updated to:", modelName);
 }
 
 export function getCurrentModel() {
-  return currentModelName;
+  return currentModel;
 }
