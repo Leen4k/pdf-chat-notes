@@ -16,6 +16,7 @@ const nextConfig = {
     UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
     LIVEBLOCKS_SECRET_KEY: process.env.LIVEBLOCKS_SECRET_KEY,
     SUPABASE_KEY: process.env.SUPABASE_KEY,
+    DEEP_SEEK_API_KEY: process.env.DEEP_SEEK_API_KEY,
   },
 };
 

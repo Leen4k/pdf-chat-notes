@@ -1,18 +1,20 @@
-import {
-  GoogleGenerativeAI,
-  HarmCategory,
-  HarmBlockThreshold,
-} from "@google/generative-ai";
+// import LlamaAI from "llamaai";
 
-const apiKey = process.env.GEMINI_API_KEY;
-const genAI = new GoogleGenerativeAI(apiKey as string);
+// const llamaAPI = new LlamaAI({
+//   apiKey: process.env.LLAMA_API_KEY,
+// });
 
-let currentModelName = "gemini-1.5-flash";
+
+import { LlamaAI } from "@llama/ai";  // Adjust based on actual Llama module
+
+const llamaAI = new LlamaAI();
+
+let currentModelName = "llama-chat";
 
 export function createChatSession(modelName: string = currentModelName) {
   console.log("Creating session with model:", modelName);
 
-  const model = genAI.getGenerativeModel({
+  const model = llamaAI.getModel({
     model: modelName,
   });
 
@@ -20,7 +22,7 @@ export function createChatSession(modelName: string = currentModelName) {
     temperature: 1,
     topP: 0.95,
     topK: 40,
-    maxOutputTokens: 8192,
+    maxTokens: 8192,
   };
 
   return model.startChat({
@@ -37,6 +39,8 @@ export function updateChatModel(modelName: string) {
   chatSession = createChatSession(modelName);
 }
 
-export function getCurrentModel() {
+export function getCurrentModel(): string {
   return currentModelName;
 }
+
+//llama model

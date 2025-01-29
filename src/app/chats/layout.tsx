@@ -5,12 +5,9 @@ import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { gradientThemes } from "@/lib/constant/gradients";
 import { AppSidebar } from "@/components/sidebar/AppSidebar";
-import { GeminiModelSelector } from "@/components/AIDropdown";
-import {
-  getCurrentModel,
-  updateChatModel,
-} from "@/lib/llm/gemini/gemini-model";
-import { useState } from "react";
+import { ModelSelector } from "@/components/AIDropdown";
+import { updateLLMProvider, getCurrentConfig, LLMProvider } from "@/lib/llm";
+import { useState, useEffect } from "react";
 
 export default function ChatsLayout({
   children,
@@ -18,7 +15,18 @@ export default function ChatsLayout({
   children: React.ReactNode;
 }) {
   const { chatId } = useParams();
-  const [currentModel, setCurrentModel] = useState("gemini-1.5-pro");
+  const [config, setConfig] = useState(getCurrentConfig());
+
+  // Sync with LLM factory state
+  useEffect(() => {
+    const currentConfig = getCurrentConfig();
+    if (
+      currentConfig.provider !== config.provider ||
+      currentConfig.model !== config.model
+    ) {
+      setConfig(currentConfig);
+    }
+  }, [config.provider, config.model]);
 
   const { data: chatData } = useQuery({
     queryKey: ["chat", chatId],
@@ -29,10 +37,10 @@ export default function ChatsLayout({
     enabled: !!chatId,
   });
 
-  const handleModelChange = (model: string) => {
-    setCurrentModel(model);
-    updateChatModel(model);
-    console.log("Current model after change:", getCurrentModel()); // Add this line
+  const handleConfigChange = (provider: LLMProvider, model: string) => {
+    console.log(`Switching to ${provider} model: ${model}`);
+    updateLLMProvider(provider, model);
+    setConfig(getCurrentConfig());
   };
 
   const gradientClass = chatData?.gradientId
@@ -52,9 +60,9 @@ export default function ChatsLayout({
         {" "}
         <div className="flex items-center space-x-4 ml-4 mt-4">
           <SidebarTrigger variant="outline" />
-          <GeminiModelSelector
-            currentModel={currentModel}
-            onModelChange={handleModelChange}
+          <ModelSelector
+            currentConfig={config}
+            onConfigChange={handleConfigChange}
           />
         </div>
         {children}
