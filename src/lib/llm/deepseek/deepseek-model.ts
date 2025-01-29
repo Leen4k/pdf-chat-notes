@@ -1,26 +1,29 @@
-import { DeepSeekAI } from "@deepseek/ai";
+import { 
+  DeepSeekAI, 
+  GenerationConfig 
+} from "@deepseek/ai";
 
-const deepSeekAI = new DeepSeekAI();
+const deepSeek = new DeepSeekAI();
 
-let currentModelName = "deepseek-chat";
+let currentModelName = "deepseek-2.0-pro";
 
 export function createChatSession(modelName: string = currentModelName) {
   console.log("Creating session with model:", modelName);
 
-  const model = deepSeekAI.getModel({
+  const model = deepSeek.getModel({
     model: modelName,
   });
 
-  const generationConfig = {
-    temperature: 1,
-    topP: 0.95,
-    topK: 40,
-    maxTokens: 8192,
+  const generationConfig: GenerationConfig = {
+    temperature: 0.9,
+    topP: 0.9,
+    topK: 50,
+    maxTokens: 8000,
   };
 
-  return model.startChat({
-    generationConfig,
-    history: [],
+  return model.startChatSession({
+    config: generationConfig,
+    chatHistory: [],
   });
 }
 
@@ -32,6 +35,6 @@ export function updateChatModel(modelName: string) {
   chatSession = createChatSession(modelName);
 }
 
-export function getCurrentModel(): string {
+export function getCurrentModel() {
   return currentModelName;
 }
