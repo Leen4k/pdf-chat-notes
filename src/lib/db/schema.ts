@@ -13,6 +13,7 @@ import {
 
 export const userSystemEnum = pgEnum("user_system_enum", ["system", "user"]);
 //TODO: Add a column for the model
+//TODO: Add custom user & auth strategies
 export const chats = pgTable("chats", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
