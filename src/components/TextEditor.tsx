@@ -164,7 +164,7 @@ const TextEditorContent = () => {
         heading: false,
         paragraph: {
           HTMLAttributes: {
-            class: "",
+            class: "text-inherit",
           },
         },
       }),
@@ -196,7 +196,7 @@ const TextEditorContent = () => {
     editorProps: {
       attributes: {
         class:
-          "prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none min-h-screen p-4 cursor-text",
+          "prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none min-h-screen p-4 cursor-text text-foreground dark:text-foreground",
       },
     },
     content: "", // Start empty and let the effect handle content
@@ -416,6 +416,17 @@ const TextEditorContent = () => {
 
   // Update the editor styles for more compact formatting
   const editorStyles = `
+    .ProseMirror {
+      color: inherit;
+    }
+
+    .ProseMirror p {
+      color: inherit;
+    }
+
+    .ProseMirror li {
+      color: inherit;
+    }
 
     /* Override default selection color */
     .ProseMirror ::selection {
@@ -423,9 +434,23 @@ const TextEditorContent = () => {
       color: inherit;
     }
 
-    /* Dark mode selection color */
-    .dark .ProseMirror ::selection {
-      background: var(--selection-color, #2d5a9c);
+    /* Add spacing between paragraphs and lists */
+    .ProseMirror p {
+      margin-bottom: 1em;
+    }
+
+    .ProseMirror ul,
+    .ProseMirror ol {
+      margin: 1em 0;
+    }
+
+    .ProseMirror li {
+      margin: 0.5em 0;
+    }
+
+    /* Ensure proper text contrast in dark mode */
+    .dark .ProseMirror {
+      color: var(--foreground);
     }
   `;
 

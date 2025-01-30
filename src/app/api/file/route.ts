@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db"; // Adjust the import path to your database connection
 
-import { eq, and } from "drizzle-orm";
+import { eq, and, asc } from "drizzle-orm";
 import { fileChunks, files } from "@/lib/db/schema";
 
 export async function GET(req: NextRequest) {
@@ -27,7 +27,8 @@ export async function GET(req: NextRequest) {
           eq(files.chatId, parseInt(chatId)),
           eq(files.isDeleted, false) // Add this condition for `isDeleted`
         )
-      );
+      )
+      .orderBy(asc(files.name));
 
     // Return the files
     return NextResponse.json({

@@ -19,6 +19,31 @@ import { cn } from "@/lib/utils";
 // Ensure PDF.js worker is loaded
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/legacy/build/pdf.worker.min.mjs`;
 
+// First, add these styles to improve text selection in the PDF viewer
+const pdfViewerStyles = `
+  .react-pdf__Page__textContent {
+    user-select: text !important;
+    cursor: text !important;
+    color: transparent;
+  }
+
+  .react-pdf__Page__textContent > span {
+    color: transparent;
+    cursor: text;
+    user-select: text !important;
+  }
+
+  .react-pdf__Page__textContent::selection,
+  .react-pdf__Page__textContent > span::selection {
+    background-color: #2563eb40 !important;
+    color: transparent;
+  }
+
+  .react-pdf__Page__canvas {
+    margin: 0 auto;
+  }
+`;
+
 const PDFViewer = () => {
   const { chatId: id } = useParams();
   const searchParams = useSearchParams();
@@ -56,6 +81,18 @@ const PDFViewer = () => {
     loadInitialContent();
   }, [id]);
 
+  // Add this near the top of your component
+  useEffect(() => {
+    // Add styles to head
+    const styleElement = document.createElement('style');
+    styleElement.innerHTML = pdfViewerStyles;
+    document.head.appendChild(styleElement);
+
+    return () => {
+      document.head.removeChild(styleElement);
+    };
+  }, []);
+
   const handleLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
     setError(null);
@@ -81,6 +118,34 @@ const PDFViewer = () => {
     if (!searchQuery) return textItem.str;
     return highlightPattern(textItem.str, searchQuery);
   };
+
+  // Add a custom hook to handle text copying
+  const usePDFTextCopy = () => {
+    useEffect(() => {
+      const handleCopy = (e: ClipboardEvent) => {
+        const selection = window.getSelection();
+        if (!selection) return;
+
+        const selectedText = selection.toString();
+        if (!selectedText) return;
+
+        // Clean up the copied text
+        const cleanedText = selectedText
+          .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+          .trim();
+
+        if (cleanedText) {
+          e.preventDefault();
+          e.clipboardData?.setData('text/plain', cleanedText);
+        }
+      };
+
+      document.addEventListener('copy', handleCopy);
+      return () => document.removeEventListener('copy', handleCopy);
+    }, []);
+  };
+
+  usePDFTextCopy();
 
   if (!id) {
     return <div>Invalid chat ID</div>;
@@ -217,6 +282,11 @@ const PDFViewer = () => {
                         </div>
                       }
                       className="space-y-4"
+                      options={{
+                        cMapUrl: 'https://unpkg.com/pdfjs-dist@3.4.120/cmaps/',
+                        cMapPacked: true,
+                        standardFontDataUrl: 'https://unpkg.com/pdfjs-dist@3.4.120/standard_fonts/',
+                      }}
                     >
                       {numPages && (
                         <>
@@ -226,9 +296,16 @@ const PDFViewer = () => {
                               pageNumber={index + 1}
                               renderTextLayer={true}
                               renderAnnotationLayer={true}
-                              className="shadow-md mb-4 mx-auto"
+                              className="shadow-md mb-4 mx-auto relative"
                               width={595}
                               customTextRenderer={textRenderer}
+                              onLoadSuccess={(page) => {
+                                // Ensure text layer is properly rendered
+                                const textLayer = document.querySelector('.react-pdf__Page__textContent');
+                                if (textLayer) {
+                                  textLayer.setAttribute('style', 'color: transparent; pointer-events: auto;');
+                                }
+                              }}
                             />
                           ))}
                         </>
